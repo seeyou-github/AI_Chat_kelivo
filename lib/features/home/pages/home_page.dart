@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io' show File;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:provider/provider.dart';
@@ -237,21 +238,42 @@ class _HomePageState extends State<HomePage>
         : _controller.titleForLocale();
 
     if (width >= AppBreakpoints.tablet) {
-      return _buildTabletLayout(
+      return _wrapAndroidBackToExit(
+        _buildTabletLayout(
+          context,
+          title: title,
+          providerName: modelInfo.providerName,
+          modelDisplay: modelInfo.modelDisplay,
+          cs: cs,
+        ),
+      );
+    }
+
+    return _wrapAndroidBackToExit(
+      _buildMobileLayout(
         context,
         title: title,
         providerName: modelInfo.providerName,
         modelDisplay: modelInfo.modelDisplay,
         cs: cs,
-      );
-    }
+      ),
+    );
+  }
 
-    return _buildMobileLayout(
-      context,
-      title: title,
-      providerName: modelInfo.providerName,
-      modelDisplay: modelInfo.modelDisplay,
-      cs: cs,
+  Widget _wrapAndroidBackToExit(Widget child) {
+    if (!PlatformUtils.isAndroid) return child;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (!_drawerController.isClosed) {
+          await _drawerController.close();
+          return;
+        }
+        _controller.dismissKeyboard();
+        await SystemNavigator.pop();
+      },
+      child: child,
     );
   }
 
