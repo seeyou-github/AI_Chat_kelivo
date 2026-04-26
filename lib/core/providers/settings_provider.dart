@@ -777,7 +777,7 @@ class SettingsProvider extends ChangeNotifier {
     _hapticsOnCardTap = prefs.getBool(_displayHapticsOnCardTapKey) ?? true;
     // Apply global haptics to service layer
     Haptics.setEnabled(_hapticsGlobalEnabled);
-    _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? true;
+    _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? false;
     _keepSidebarOpenOnAssistantTap =
         prefs.getBool(_displayKeepSidebarOpenOnAssistantTapKey) ?? false;
     _keepSidebarOpenOnTopicTap =
@@ -789,7 +789,7 @@ class SettingsProvider extends ChangeNotifier {
     await RequestLogger.setEnabled(_requestLogEnabled);
     _flutterLogEnabled = prefs.getBool(_flutterLogEnabledKey) ?? false;
     await FlutterLogger.setEnabled(_flutterLogEnabled);
-    _logSaveOutput = prefs.getBool(_logSaveOutputKey) ?? true;
+    _logSaveOutput = prefs.getBool(_logSaveOutputKey) ?? false;
     RequestLogger.saveOutput = _logSaveOutput;
     _logAutoDeleteDays = prefs.getInt(_logAutoDeleteDaysKey) ?? 0;
     _logMaxSizeMB = prefs.getInt(_logMaxSizeMBKey) ?? 0;
@@ -3175,7 +3175,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   }
 
   // Display: show app updates notification
-  bool _showAppUpdates = true;
+  bool _showAppUpdates = false;
   bool get showAppUpdates => _showAppUpdates;
   Future<void> setShowAppUpdates(bool v) async {
     if (_showAppUpdates == v) return;
@@ -3244,7 +3244,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   }
 
   // Log settings: save output
-  bool _logSaveOutput = true;
+  bool _logSaveOutput = false;
   bool get logSaveOutput => _logSaveOutput;
   Future<void> setLogSaveOutput(bool v) async {
     if (_logSaveOutput == v) return;
