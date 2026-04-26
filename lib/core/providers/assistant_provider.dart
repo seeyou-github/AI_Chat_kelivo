@@ -26,12 +26,32 @@ class AssistantProvider extends ChangeNotifier {
     return null;
   }
 
-  AssistantProvider() {
-    _load();
+  AssistantProvider({SharedPreferences? initialPrefs}) {
+    if (initialPrefs != null) {
+      _applyInitialPrefs(initialPrefs);
+    }
+    _load(initialPrefs: initialPrefs);
   }
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _applyInitialPrefs(SharedPreferences prefs) {
+    try {
+      final raw = prefs.getString(_assistantsKey);
+      if (raw != null && raw.isNotEmpty) {
+        _assistants
+          ..clear()
+          ..addAll(Assistant.decodeList(raw));
+      }
+      final savedId = prefs.getString(_currentAssistantKey);
+      if (savedId != null && _assistants.any((a) => a.id == savedId)) {
+        _currentAssistantId = savedId;
+      } else {
+        _currentAssistantId = null;
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _load({SharedPreferences? initialPrefs}) async {
+    final prefs = initialPrefs ?? await SharedPreferences.getInstance();
     final raw = prefs.getString(_assistantsKey);
     if (raw != null && raw.isNotEmpty) {
       _assistants

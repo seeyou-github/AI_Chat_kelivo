@@ -6,6 +6,7 @@ import 'package:window_manager/window_manager.dart';
 import 'window_size_manager.dart';
 import 'dart:async';
 import 'package:bitsdojo_window/bitsdojo_window.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Handles desktop window initialization and persistence (size/position/maximized).
 class DesktopWindowController with WindowListener {
@@ -19,7 +20,10 @@ class DesktopWindowController with WindowListener {
   Timer? _resizeDebounce;
   static const _debounceDuration = Duration(milliseconds: 400);
 
-  Future<void> initializeAndShow({String? title}) async {
+  Future<void> initializeAndShow({
+    String? title,
+    SharedPreferences? initialPrefs,
+  }) async {
     if (kIsWeb) return;
     if (!(defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.macOS ||
@@ -31,7 +35,7 @@ class DesktopWindowController with WindowListener {
     _attachListeners();
     // Windows custom title bar is handled in main (TitleBarStyle.hidden)
 
-    final initialSize = await _sizeMgr.getInitialSize();
+    final initialSize = await _sizeMgr.getInitialSize(prefs: initialPrefs);
     const minSize = Size(
       WindowSizeManager.minWindowWidth,
       WindowSizeManager.minWindowHeight,
@@ -51,8 +55,8 @@ class DesktopWindowController with WindowListener {
       title: title,
     );
 
-    final savedPos = await _sizeMgr.getPosition();
-    final wasMax = await _sizeMgr.getWindowMaximized();
+    final savedPos = await _sizeMgr.getPosition(prefs: initialPrefs);
+    final wasMax = await _sizeMgr.getWindowMaximized(prefs: initialPrefs);
 
     if (defaultTargetPlatform == TargetPlatform.windows){
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);

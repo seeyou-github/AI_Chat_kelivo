@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:path/path.dart' as p;
@@ -32,10 +33,24 @@ class ChatService extends ChangeNotifier {
 
   bool _initialized = false;
   bool get initialized => _initialized;
+  Future<void>? _initFuture;
+  Future<void>? _startupMaintenanceFuture;
 
   String? get currentConversationId => _currentConversationId;
 
   Future<void> init() async {
+    if (_initialized) return;
+    final existing = _initFuture;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    final future = _initCore();
+    _initFuture = future;
+    await future;
+  }
+
+  Future<void> _initCore() async {
     if (_initialized) return;
 
     // Initialize Hive with platform-specific directory
@@ -54,15 +69,30 @@ class ChatService extends ChangeNotifier {
     _messagesBox = await Hive.openBox<ChatMessage>(_messagesBoxName);
     _toolEventsBox = await Hive.openBox(_toolEventsBoxName);
 
-    // Migrate any persisted message content that references old iOS sandbox paths
-    await _migrateSandboxPaths();
-
-    // Reset any stale isStreaming flags left over from a previous app crash or
-    // force-quit.  After a fresh launch no message can be actively streaming.
-    await _resetStaleStreamingFlags();
-
     _initialized = true;
     notifyListeners();
+    unawaited(ensureStartupMaintenance());
+  }
+
+  Future<void> ensureStartupMaintenance() {
+    final existing = _startupMaintenanceFuture;
+    if (existing != null) return existing;
+    final future = _runStartupMaintenance();
+    _startupMaintenanceFuture = future;
+    return future;
+  }
+
+  Future<void> _runStartupMaintenance() async {
+    try {
+      // Migrate any persisted message content that references old iOS sandbox paths.
+      await _migrateSandboxPaths();
+
+      // Reset any stale isStreaming flags left over from a previous app crash or
+      // force-quit. After a fresh launch no message can be actively streaming.
+      await _resetStaleStreamingFlags();
+    } finally {
+      _startupMaintenanceFuture = null;
+    }
   }
 
   List<Conversation> getAllConversations() {

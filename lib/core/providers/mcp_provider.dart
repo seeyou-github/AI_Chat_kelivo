@@ -255,9 +255,14 @@ class McpProvider extends ChangeNotifier {
   final Map<String, Timer> _heartbeats = <String, Timer>{};
   Duration _requestTimeout = const Duration(seconds: 30);
   String? _cachedSystemPath;
+  Timer? _deferredAutoConnectTimer;
+  bool _deferredAutoConnectScheduled = false;
 
-  McpProvider() {
-    _load();
+  McpProvider({SharedPreferences? initialPrefs}) {
+    if (initialPrefs != null) {
+      _applyInitialPrefs(initialPrefs);
+    }
+    _load(initialPrefs: initialPrefs);
   }
 
   List<McpServerConfig> get servers => List.unmodifiable(_servers);
@@ -272,8 +277,7 @@ class McpProvider extends ChangeNotifier {
   Duration get requestTimeout => _requestTimeout;
   int get requestTimeoutSeconds => _requestTimeout.inSeconds;
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _applyInitialPrefs(SharedPreferences prefs) {
     final timeoutMs = prefs.getInt(_prefsTimeoutKey);
     if (timeoutMs != null && timeoutMs > 0) {
       _requestTimeout = Duration(milliseconds: timeoutMs);
@@ -292,17 +296,21 @@ class McpProvider extends ChangeNotifier {
     }
     // Ensure built-in @kelivo/fetch is present by default
     _ensureBuiltinFetchServerPresent();
+    _resetStatuses();
+  }
+
+  Future<void> _load({SharedPreferences? initialPrefs}) async {
+    final prefs = initialPrefs ?? await SharedPreferences.getInstance();
+    _applyInitialPrefs(prefs);
+    notifyListeners();
+  }
+
+  void _resetStatuses() {
     // initialize statuses
+    _status.clear();
+    _errors.clear();
     for (final s in _servers) {
       _status[s.id] = McpStatus.idle;
-      _errors.remove(s.id);
-    }
-    notifyListeners();
-
-    // Auto-connect enabled servers
-    for (final s in _servers.where((e) => e.enabled)) {
-      // fire and forget
-      unawaited(connect(s.id));
     }
   }
 
@@ -322,6 +330,26 @@ class McpProvider extends ChangeNotifier {
       tools: const <McpToolConfig>[], // will refresh on connect
     );
     _servers = [..._servers, cfg];
+  }
+
+  void scheduleDeferredAutoConnect({
+    Duration delay = const Duration(seconds: 2),
+  }) {
+    if (_deferredAutoConnectScheduled) return;
+    _deferredAutoConnectScheduled = true;
+    _deferredAutoConnectTimer = Timer(delay, () async {
+      _deferredAutoConnectScheduled = false;
+      _deferredAutoConnectTimer = null;
+      for (final s in _servers.where((e) => e.enabled)) {
+        if (s.transport != McpTransportType.inmemory) continue;
+        unawaited(connect(s.id));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      for (final s in _servers.where((e) => e.enabled)) {
+        if (s.transport == McpTransportType.inmemory) continue;
+        unawaited(connect(s.id));
+      }
+    });
   }
 
   Future<void> _persist() async {
@@ -602,12 +630,7 @@ class McpProvider extends ChangeNotifier {
 
     await _persist();
     notifyListeners();
-
-    // Auto-connect enabled servers
-    for (final s in _servers.where((e) => e.enabled)) {
-      // fire and forget
-      unawaited(connect(s.id));
-    }
+    scheduleDeferredAutoConnect(delay: const Duration(milliseconds: 250));
   }
 
   McpServerConfig? getById(String id) {
@@ -1384,6 +1407,7 @@ class McpProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _deferredAutoConnectTimer?.cancel();
     // Clean up timers
     for (final t in _heartbeats.values) {
       t.cancel();

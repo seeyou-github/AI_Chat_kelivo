@@ -20,12 +20,26 @@ class UserProvider extends ChangeNotifier {
   String? get avatarType => _avatarType;
   String? get avatarValue => _avatarValue;
 
-  UserProvider() {
-    _load();
+  UserProvider({SharedPreferences? initialPrefs}) {
+    if (initialPrefs != null) {
+      _applyInitialPrefs(initialPrefs);
+    }
+    _load(initialPrefs: initialPrefs);
   }
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+  void _applyInitialPrefs(SharedPreferences prefs) {
+    final n = prefs.getString(_prefsUserNameKey);
+    if (n != null && n.isNotEmpty) {
+      _name = n;
+      _hasSavedName = true;
+    }
+    _avatarType = prefs.getString(_prefsAvatarTypeKey);
+    final rawAvatar = prefs.getString(_prefsAvatarValueKey);
+    _avatarValue = rawAvatar == null ? null : SandboxPathResolver.fix(rawAvatar);
+  }
+
+  Future<void> _load({SharedPreferences? initialPrefs}) async {
+    final prefs = initialPrefs ?? await SharedPreferences.getInstance();
     final n = prefs.getString(_prefsUserNameKey);
     if (n != null && n.isNotEmpty) {
       _name = n;

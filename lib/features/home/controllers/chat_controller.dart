@@ -80,6 +80,27 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setCurrentConversationDeferred(Conversation? conversation) async {
+    _currentConversation = conversation;
+    if (conversation == null) {
+      _messages = [];
+      _versionSelections = <String, int>{};
+      notifyListeners();
+      return;
+    }
+
+    final conversationId = conversation.id;
+    _messages = [];
+    _versionSelections = <String, int>{};
+    notifyListeners();
+
+    await Future<void>.microtask(() {});
+    if (_currentConversation?.id != conversationId) return;
+    _messages = List.of(_chatService.getMessages(conversationId));
+    _loadVersionSelections();
+    notifyListeners();
+  }
+
   /// Update the current conversation reference (e.g., after title change).
   void updateCurrentConversation(Conversation? conversation) {
     _currentConversation = conversation;

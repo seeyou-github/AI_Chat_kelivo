@@ -28,10 +28,10 @@ class WindowSizeManager {
     return Size(w.toDouble(), h.toDouble());
   }
 
-  Future<Size> getInitialSize() async {
-    final prefs = await SharedPreferences.getInstance();
-    final width = prefs.getDouble(_kWidth) ?? defaultWindowWidth;
-    final height = prefs.getDouble(_kHeight) ?? defaultWindowHeight;
+  Future<Size> getInitialSize({SharedPreferences? prefs}) async {
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    final width = resolvedPrefs.getDouble(_kWidth) ?? defaultWindowWidth;
+    final height = resolvedPrefs.getDouble(_kHeight) ?? defaultWindowHeight;
     return _clamp(Size(width, height));
   }
 
@@ -42,10 +42,10 @@ class WindowSizeManager {
     await prefs.setDouble(_kHeight, s.height);
   }
 
-  Future<Offset?> getPosition() async {
-    final prefs = await SharedPreferences.getInstance();
-    final x = prefs.getDouble(_kPosX);
-    final y = prefs.getDouble(_kPosY);
+  Future<Offset?> getPosition({SharedPreferences? prefs}) async {
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    final x = resolvedPrefs.getDouble(_kPosX);
+    final y = resolvedPrefs.getDouble(_kPosY);
     if (x == null || y == null) return null;
     // Simple sanity: avoid infinities
     if (!x.isFinite || !y.isFinite) return null;
@@ -75,9 +75,9 @@ class WindowSizeManager {
     }
   }
 
-  Future<bool> getWindowMaximized() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_kMaximized) ?? false;
+  Future<bool> getWindowMaximized({SharedPreferences? prefs}) async {
+    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
+    return resolvedPrefs.getBool(_kMaximized) ?? false;
   }
 
   Future<void> setWindowMaximized(bool value) async {

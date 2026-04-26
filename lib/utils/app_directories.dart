@@ -27,21 +27,15 @@ class AppDirectories {
     final root = await _getWindowsPortableRootDirectory();
     final configDir = Directory(p.join(root.path, 'Config'));
     final cacheDir = Directory(p.join(root.path, 'cache'));
-    if (!await configDir.exists()) {
-      await configDir.create(recursive: true);
-    }
-    if (!await cacheDir.exists()) {
-      await cacheDir.create(recursive: true);
-    }
+    await configDir.create(recursive: true);
+    await cacheDir.create(recursive: true);
     await _migrateWindowsLegacyData(configDir: configDir, cacheDir: cacheDir);
   }
 
   static Future<Directory> _getWindowsPortableRootDirectory() async {
     final exeDir = File(Platform.resolvedExecutable).parent;
     final root = Directory(p.join(exeDir.path, 'AppData'));
-    if (!await root.exists()) {
-      await root.create(recursive: true);
-    }
+    await root.create(recursive: true);
     return root;
   }
 

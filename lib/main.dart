@@ -51,6 +51,12 @@ final RouteObserver<ModalRoute<dynamic>> routeObserver =
 bool _didCheckUpdates = false; // one-time update check flag
 bool _didEnsureAssistants = false; // ensure defaults after l10n ready
 SharedPreferences? _bootstrapPrefs;
+bool _didScheduleDeferredStartupTasks = false;
+bool _didWarmSystemFonts = false;
+bool _didInitDesktopHotkeys = false;
+bool _didInitAndroidBackground = false;
+bool? _lastDynamicColorSupported;
+String? _lastTraySyncSignature;
 
 Future<void> main() async {
   await runZoned(
@@ -71,7 +77,7 @@ Future<void> main() async {
             48 << 20; // ~48MB
       } catch (_) {}
       // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
-      await _initDesktopWindow();
+      await _initDesktopWindow(initialPrefs: _bootstrapPrefs);
       // Avoid preloading all system fonts at launch (huge memory on desktop)
       // Debug logging and global error handlers were enabled previously for diagnosis.
       // They are commented out now per request to reduce log noise.
@@ -95,7 +101,7 @@ Future<void> main() async {
   );
 }
 
-Future<void> _initDesktopWindow() async {
+Future<void> _initDesktopWindow({SharedPreferences? initialPrefs}) async {
   if (kIsWeb) return;
   try {
     if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -103,10 +109,168 @@ Future<void> _initDesktopWindow() async {
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     }
     // Initialize and show desktop window with persisted size/position
-    await DesktopWindowController.instance.initializeAndShow(title: 'Kelivo');
+    await DesktopWindowController.instance.initializeAndShow(
+      title: 'Kelivo',
+      initialPrefs: initialPrefs,
+    );
   } catch (_) {
     // Ignore on unsupported platforms.
   }
+}
+
+bool _isDesktopPlatform() =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.macOS ||
+        defaultTargetPlatform == TargetPlatform.linux);
+
+void _updateDynamicColorSupportIfNeeded(
+  SettingsProvider settings,
+  bool dynSupported,
+) {
+  if (_lastDynamicColorSupported == dynSupported) return;
+  _lastDynamicColorSupported = dynSupported;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    try {
+      settings.setDynamicColorSupported(dynSupported);
+    } catch (_) {}
+  });
+}
+
+void _syncDesktopTrayIfNeeded(
+  BuildContext context,
+  AppLocalizations? l10n,
+  SettingsProvider settings,
+) {
+  if (l10n == null || !_isDesktopPlatform()) return;
+  final signature =
+      '${l10n.localeName}|${settings.desktopShowTray}|${settings.desktopMinimizeToTrayOnClose}';
+  if (_lastTraySyncSignature == signature) return;
+  _lastTraySyncSignature = signature;
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (!context.mounted) return;
+    try {
+      await DesktopTrayController.instance.syncFromSettings(
+        l10n,
+        showTray: settings.desktopShowTray,
+        minimizeToTrayOnClose: settings.desktopMinimizeToTrayOnClose,
+      );
+    } catch (_) {}
+  });
+}
+
+void _scheduleDeferredStartupTasks(BuildContext context) {
+  if (_didScheduleDeferredStartupTasks) return;
+  _didScheduleDeferredStartupTasks = true;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(_runDeferredStartupTasks(context));
+  });
+}
+
+Future<void> _runDeferredStartupTasks(BuildContext context) async {
+  if (!context.mounted) return;
+
+  final l10n = AppLocalizations.of(context);
+  await Future<void>.delayed(const Duration(milliseconds: 250));
+  if (!context.mounted) return;
+  final settings = context.read<SettingsProvider>();
+
+  if (!_didEnsureAssistants && l10n != null) {
+    _didEnsureAssistants = true;
+    try {
+      await context.read<AssistantProvider>().ensureDefaults(context);
+    } catch (_) {}
+    try {
+      context.read<ChatService>().setDefaultConversationTitle(
+        l10n.chatServiceDefaultConversationTitle,
+      );
+    } catch (_) {}
+    try {
+      context.read<UserProvider>().setDefaultNameIfUnset(
+        l10n.userProviderDefaultUserName,
+      );
+    } catch (_) {}
+  }
+
+  if (_isDesktopPlatform() && !_didWarmSystemFonts) {
+    _didWarmSystemFonts = true;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!context.mounted) return;
+    try {
+      final wantsAppSystem =
+          (settings.appFontFamily?.isNotEmpty == true) &&
+          !settings.appFontIsGoogle &&
+          (settings.appFontLocalAlias == null ||
+              settings.appFontLocalAlias!.isEmpty);
+      final wantsCodeSystem =
+          (settings.codeFontFamily?.isNotEmpty == true) &&
+          !settings.codeFontIsGoogle &&
+          (settings.codeFontLocalAlias == null ||
+              settings.codeFontLocalAlias!.isEmpty);
+      if (wantsAppSystem || wantsCodeSystem) {
+        final sf = SystemFonts();
+        if (wantsAppSystem) {
+          final fam = settings.appFontFamily!;
+          try {
+            await sf.loadFont(fam);
+          } catch (_) {}
+        }
+        if (wantsCodeSystem) {
+          final fam = settings.codeFontFamily!;
+          try {
+            if (fam != settings.appFontFamily) await sf.loadFont(fam);
+          } catch (_) {}
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (_isDesktopPlatform() && !_didInitDesktopHotkeys) {
+    _didInitDesktopHotkeys = true;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!context.mounted) return;
+    try {
+      await context.read<HotkeyProvider>().initialize();
+    } catch (_) {}
+  }
+
+  if (!_didCheckUpdates && settings.showAppUpdates) {
+    _didCheckUpdates = true;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!context.mounted) return;
+    try {
+      context.read<UpdateProvider>().checkForUpdates();
+    } catch (_) {}
+  }
+
+  if (!_didInitAndroidBackground && Platform.isAndroid) {
+    _didInitAndroidBackground = true;
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!context.mounted) return;
+    try {
+      final mode = settings.androidBackgroundChatMode;
+      if (mode != AndroidBackgroundChatMode.off && l10n != null) {
+        try {
+          final already = await AndroidBackgroundManager.isEnabled();
+          if (!already) {
+            await AndroidBackgroundManager.ensureInitialized(
+              notificationTitle: l10n.androidBackgroundNotificationTitle,
+              notificationText: l10n.androidBackgroundNotificationText,
+            );
+            await AndroidBackgroundManager.setEnabled(true);
+          }
+        } catch (_) {}
+        if (mode == AndroidBackgroundChatMode.onNotify) {
+          await NotificationService.ensureInitialized();
+          await NotificationService.ensureAndroidNotificationsPermission();
+        }
+      }
+    } catch (_) {}
+  }
+
+  try {
+    context.read<McpProvider>().scheduleDeferredAutoConnect();
+  } catch (_) {}
 }
 
 // Removed eager system font preloading to reduce memory footprint at launch.
@@ -121,15 +285,21 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(
+          create: (_) => UserProvider(initialPrefs: initialPrefs),
+        ),
         ChangeNotifierProvider(
           create: (_) => SettingsProvider(initialPrefs: initialPrefs),
         ),
         ChangeNotifierProvider(create: (_) => ChatService()),
         ChangeNotifierProvider(create: (_) => McpToolService()),
-        ChangeNotifierProvider(create: (_) => McpProvider()),
+        ChangeNotifierProvider(
+          create: (_) => McpProvider(initialPrefs: initialPrefs),
+        ),
         ChangeNotifierProvider(create: (_) => ToolApprovalService()),
-        ChangeNotifierProvider(create: (_) => AssistantProvider()),
+        ChangeNotifierProvider(
+          create: (_) => AssistantProvider(initialPrefs: initialPrefs),
+        ),
         ChangeNotifierProvider(create: (_) => TagProvider()),
         ChangeNotifierProvider(create: (_) => TtsProvider()),
         ChangeNotifierProvider(create: (_) => UpdateProvider()),
@@ -160,53 +330,6 @@ class MyApp extends StatelessWidget {
           final settings = context.watch<SettingsProvider>();
           // Apply global proxy overrides when settings change
           settings.applyGlobalProxyOverridesIfNeeded();
-          // Lazily ensure system fonts only if user selected a system family (desktop only)
-          // Load ONLY selected families to avoid huge memory from loading all system fonts.
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            try {
-              final isDesktop =
-                  !kIsWeb &&
-                  (defaultTargetPlatform == TargetPlatform.windows ||
-                      defaultTargetPlatform == TargetPlatform.macOS ||
-                      defaultTargetPlatform == TargetPlatform.linux);
-              if (!isDesktop) return;
-              // Selected system app/code fonts (not Google, not local alias)
-              final wantsAppSystem =
-                  (settings.appFontFamily?.isNotEmpty == true) &&
-                  !settings.appFontIsGoogle &&
-                  (settings.appFontLocalAlias == null ||
-                      settings.appFontLocalAlias!.isEmpty);
-              final wantsCodeSystem =
-                  (settings.codeFontFamily?.isNotEmpty == true) &&
-                  !settings.codeFontIsGoogle &&
-                  (settings.codeFontLocalAlias == null ||
-                      settings.codeFontLocalAlias!.isEmpty);
-              if (wantsAppSystem || wantsCodeSystem) {
-                final sf = SystemFonts();
-                if (wantsAppSystem) {
-                  final fam = settings.appFontFamily!;
-                  try {
-                    await sf.loadFont(fam);
-                  } catch (_) {}
-                }
-                if (wantsCodeSystem) {
-                  final fam = settings.codeFontFamily!;
-                  try {
-                    if (fam != settings.appFontFamily) await sf.loadFont(fam);
-                  } catch (_) {}
-                }
-              }
-            } catch (_) {}
-          });
-          // One-time app update check after first build
-          if (settings.showAppUpdates && !_didCheckUpdates) {
-            _didCheckUpdates = true;
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              try {
-                context.read<UpdateProvider>().checkForUpdates();
-              } catch (_) {}
-            });
-          }
           return DynamicColorBuilder(
             builder: (lightDynamic, darkDynamic) {
               // if (lightDynamic != null) {
@@ -224,56 +347,7 @@ class MyApp extends StatelessWidget {
               // Update dynamic color capability for settings UI (avoid notify during build)
               final dynSupported =
                   isAndroid && (lightDynamic != null || darkDynamic != null);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                try {
-                  settings.setDynamicColorSupported(dynSupported);
-                } catch (_) {}
-              });
-
-              // Initialize desktop hotkeys on supported platforms
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                try {
-                  final isDesktop =
-                      !kIsWeb &&
-                      (defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.linux);
-                  if (isDesktop) {
-                    await context.read<HotkeyProvider>().initialize();
-                  }
-                } catch (_) {}
-              });
-
-              // Android-only: ensure background execution matches setting and prepare notifications if needed
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                try {
-                  if (Platform.isAndroid) {
-                    final mode = settings.androidBackgroundChatMode;
-                    if (mode != AndroidBackgroundChatMode.off) {
-                      final l10n = AppLocalizations.of(context);
-                      if (l10n == null) return;
-                      // Enable only if currently disabled to avoid duplicate ROM prompts
-                      try {
-                        final already =
-                            await AndroidBackgroundManager.isEnabled();
-                        if (!already) {
-                          await AndroidBackgroundManager.ensureInitialized(
-                            notificationTitle:
-                                l10n.androidBackgroundNotificationTitle,
-                            notificationText:
-                                l10n.androidBackgroundNotificationText,
-                          );
-                          await AndroidBackgroundManager.setEnabled(true);
-                        }
-                      } catch (_) {}
-                      if (mode == AndroidBackgroundChatMode.onNotify) {
-                        await NotificationService.ensureInitialized();
-                        await NotificationService.ensureAndroidNotificationsPermission();
-                      }
-                    }
-                  }
-                } catch (_) {}
-              });
+              _updateDynamicColorSupportIfNeeded(settings, dynSupported);
 
               final useDyn = isAndroid && settings.useDynamicColor;
               final palette = ThemePalettes.byId(settings.themePaletteId);
@@ -362,6 +436,7 @@ class MyApp extends StatelessWidget {
                 navigatorObservers: <NavigatorObserver>[routeObserver],
                 home: _selectHome(),
                 builder: (ctx, child) {
+                  _scheduleDeferredStartupTasks(ctx);
                   final bright = Theme.of(ctx).brightness;
                   final overlay = bright == Brightness.dark
                       ? const SystemUiOverlayStyle(
@@ -382,49 +457,8 @@ class MyApp extends StatelessWidget {
                           systemNavigationBarDividerColor: Colors.transparent,
                           systemNavigationBarContrastEnforced: false,
                         );
-                  // Ensure localized defaults (assistants and chat default title) after first frame
-                  if (!_didEnsureAssistants) {
-                    _didEnsureAssistants = true;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      try {
-                        ctx.read<AssistantProvider>().ensureDefaults(ctx);
-                      } catch (_) {}
-                      try {
-                        ctx.read<ChatService>().setDefaultConversationTitle(
-                          AppLocalizations.of(
-                            ctx,
-                          )!.chatServiceDefaultConversationTitle,
-                        );
-                      } catch (_) {}
-                      try {
-                        ctx.read<UserProvider>().setDefaultNameIfUnset(
-                          AppLocalizations.of(ctx)!.userProviderDefaultUserName,
-                        );
-                      } catch (_) {}
-                    });
-                  }
-
-                  // Desktop tray + close behaviour (minimize to tray) sync
                   final l10n = AppLocalizations.of(ctx);
-                  if (l10n != null) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) async {
-                      try {
-                        final isDesktop =
-                            !kIsWeb &&
-                            (defaultTargetPlatform == TargetPlatform.windows ||
-                                defaultTargetPlatform == TargetPlatform.macOS ||
-                                defaultTargetPlatform == TargetPlatform.linux);
-                        if (!isDesktop) return;
-                        final sp = ctx.read<SettingsProvider>();
-                        await DesktopTrayController.instance.syncFromSettings(
-                          l10n,
-                          showTray: sp.desktopShowTray,
-                          minimizeToTrayOnClose:
-                              sp.desktopMinimizeToTrayOnClose,
-                        );
-                      } catch (_) {}
-                    });
-                  }
+                  _syncDesktopTrayIfNeeded(ctx, l10n, settings);
 
                   // Enforce app font as a default across the tree for Texts without explicit family
                   return AnnotatedRegion<SystemUiOverlayStyle>(

@@ -110,6 +110,7 @@ class HomePageController extends ChangeNotifier {
 
   McpProvider? _mcpProvider;
   StreamSubscription<ChatAction>? _chatActionSub;
+  Timer? _deferredProviderWarmupTimer;
 
   // ============================================================================
   // Animation Controllers
@@ -408,27 +409,23 @@ class HomePageController extends ChangeNotifier {
   void _initializeProviders() {
     try {
       final quickPhraseProvider = _context.read<QuickPhraseProvider>();
-      Future.microtask(() async {
-        try {
-          await quickPhraseProvider.initialize();
-        } catch (_) {}
-      });
-    } catch (_) {}
-    try {
-      final instructionProvider = _context.read<InstructionInjectionProvider>();
-      Future.microtask(() async {
-        try {
-          await instructionProvider.initialize();
-        } catch (_) {}
-      });
-    } catch (_) {}
-    try {
-      final memoryProvider = _context.read<MemoryProvider>();
-      Future.microtask(() async {
-        try {
-          await memoryProvider.initialize();
-        } catch (_) {}
-      });
+      _deferredProviderWarmupTimer?.cancel();
+      _deferredProviderWarmupTimer = Timer(
+        const Duration(milliseconds: 900),
+        () async {
+          try {
+            await quickPhraseProvider.initialize();
+          } catch (_) {}
+          try {
+            final instructionProvider = _context.read<InstructionInjectionProvider>();
+            await instructionProvider.initialize();
+          } catch (_) {}
+          try {
+            final memoryProvider = _context.read<MemoryProvider>();
+            await memoryProvider.initialize();
+          } catch (_) {}
+        },
+      );
     } catch (_) {}
     try {
       _mcpProvider = _context.read<McpProvider>();
@@ -541,15 +538,20 @@ class HomePageController extends ChangeNotifier {
         final recent = conversations.first;
         if ((recent.assistantId ?? '').isNotEmpty) {
           try {
-            await assistantProvider.setCurrentAssistant(recent.assistantId!);
+            unawaited(assistantProvider.setCurrentAssistant(recent.assistantId!));
           } catch (_) {}
         }
         _chatService.setCurrentConversation(recent.id);
-        _chatController.setCurrentConversation(recent);
-        _streamController.clearGeminiThoughtSigs();
-        _restoreMessageUiState();
+        unawaited(
+          _chatController.setCurrentConversationDeferred(recent).then((_) {
+            if (currentConversation?.id != recent.id) return;
+            _streamController.clearGeminiThoughtSigs();
+            _restoreMessageUiState();
+            notifyListeners();
+            _scrollToBottomSoon(animate: false);
+          }),
+        );
         notifyListeners();
-        _scrollToBottomSoon(animate: false);
       }
     }
   }
@@ -1585,6 +1587,7 @@ class HomePageController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _deferredProviderWarmupTimer?.cancel();
     _convoFadeController.dispose();
     _mcpProvider?.removeListener(_onMcpChanged);
     _scrollCtrl.dispose();
