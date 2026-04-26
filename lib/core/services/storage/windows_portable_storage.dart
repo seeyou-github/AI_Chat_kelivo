@@ -187,8 +187,8 @@ class _PortablePreferencesBackend {
       return value.map((item) => item.toString()).toList(growable: false);
     }
     if (value is bool || value is int || value is double || value is String) {
-      return value;
+      return value as Object;
     }
-    return value?.toString() ?? '';
+    return (value?.toString() ?? '') as Object;
   }
 }

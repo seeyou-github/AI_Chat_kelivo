@@ -2274,6 +2274,14 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                     final double baseTranslation = isDesktop
                                         ? 14.0
                                         : 15.5;
+                                    final conversationTextColor = settings
+                                        .resolveConversationTextColor(
+                                          Theme.of(context).brightness,
+                                          fallback:
+                                              Theme.of(
+                                                context,
+                                              ).colorScheme.onSurface,
+                                        );
                                     Widget translationContent;
                                     if (settings.enableAssistantMarkdown) {
                                       translationContent =
