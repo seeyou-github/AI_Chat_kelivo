@@ -6,6 +6,7 @@ import '../../../icons/lucide_adapter.dart';
 import '../../../theme/palettes.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/ios_switch.dart';
+import '../../../shared/dialogs/conversation_text_color_dialog.dart';
 import '../../../core/services/haptics.dart';
 
 class ThemeSettingsPage extends StatelessWidget {
@@ -92,12 +93,43 @@ class ThemeSettingsPage extends StatelessWidget {
                 ),
                 if (i != ThemePalettes.all.length - 1) _iosDivider(context),
               ],
+              _iosDivider(context),
+              _conversationTextColorRow(context),
             ],
           ),
         ],
       ),
     );
   }
+}
+
+Widget _conversationTextColorRow(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context)!;
+  return _TactileRow(
+    onTap: () => showConversationTextColorDialog(context),
+    builder: (pressed) {
+      final baseColor = cs.onSurface.withValues(alpha: 0.9);
+      return _AnimatedPressColor(
+        pressed: pressed,
+        base: baseColor,
+        builder: (c) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.displaySettingsPageConversationTextColorTitle,
+                  style: TextStyle(fontSize: 15, color: c),
+                ),
+              ),
+              const ConversationTextColorPreview(compact: true),
+            ],
+          ),
+        ),
+      );
+    },
+  );
 }
 
 // --- iOS-style helpers ---

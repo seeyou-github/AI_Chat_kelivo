@@ -28,6 +28,37 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/providers/settings_provider.dart';
 import 'package:Kelivo/desktop/html_preview_dialog.dart';
 
+Color _conversationBaseColor(BuildContext context, {Color? fallback}) {
+  final theme = Theme.of(context);
+  return context.read<SettingsProvider>().resolveConversationTextColor(
+    theme.brightness,
+    fallback: fallback ?? theme.colorScheme.onSurface,
+  );
+}
+
+Color _conversationEmphasisColor(BuildContext context, {Color? base}) {
+  final color = base ?? _conversationBaseColor(context);
+  final target = Theme.of(context).brightness == Brightness.dark
+      ? Colors.white
+      : Colors.black;
+  return Color.lerp(color, target, 0.12) ?? color;
+}
+
+Color _conversationMutedColor(
+  BuildContext context, {
+  Color? base,
+  double alpha = 0.68,
+}) {
+  final color = base ?? _conversationBaseColor(context);
+  return color.withValues(alpha: alpha.clamp(0.0, 1.0));
+}
+
+Color _conversationAccentColor(BuildContext context, {Color? base}) {
+  final color = base ?? _conversationBaseColor(context);
+  final primary = Theme.of(context).colorScheme.primary;
+  return Color.lerp(color, primary, 0.52) ?? primary;
+}
+
 /// gpt_markdown with custom code block highlight and inline code styling.
 class MarkdownWithCodeHighlight extends StatelessWidget {
   const MarkdownWithCodeHighlight({
@@ -51,6 +82,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
     final cs = Theme.of(context).colorScheme;
+    final conversationTextColor = settings.resolveConversationTextColor(
+      Theme.of(context).brightness,
+      fallback: cs.onSurface,
+    );
     final sanitizedText = _sanitizeImageLinks(text);
     final imageUrls = _extractImageUrls(sanitizedText);
     final normalized = _preprocessFences(
@@ -65,7 +100,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           height: baseStyle?.height ?? 1.55,
           letterSpacing:
               baseStyle?.letterSpacing ?? (_isZh(context) ? 0.0 : 0.05),
-          color: null,
+          color: baseStyle?.color ?? conversationTextColor,
         );
 
     // Replace default components and add our own where needed
@@ -261,7 +296,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         return Text(
           span.toPlainText(),
           style: style.copyWith(
-            color: cs.primary,
+            color: _conversationAccentColor(ctx, base: conversationTextColor),
             decoration: TextDecoration.none,
           ),
           textAlign: TextAlign.start,
@@ -346,11 +381,11 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final headerStyle = (style).copyWith(
           fontWeight: FontWeight.w600,
           // Ensure header text adapts to theme changes
-          color: cs.onSurface,
+          color: _conversationEmphasisColor(ctx, base: conversationTextColor),
         );
         final cellStyle = (style).copyWith(
           // Ensure cell text adapts to theme changes
-          color: cs.onSurface,
+          color: conversationTextColor,
         );
 
         // Count max columns to pad missing cells
@@ -484,7 +519,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   ),
                   child: DefaultTextStyle.merge(
                     // Ensure any nested spans fallback to current onSurface instead of stale defaults
-                    style: TextStyle(color: cs.onSurface),
+                    style: TextStyle(color: conversationTextColor),
                     child: table,
                   ),
                 ),
@@ -563,7 +598,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: DefaultTextStyle.merge(
-                  style: TextStyle(color: cs.onSurface),
+                  style: TextStyle(color: _conversationBaseColor(ctx)),
                   child: table,
                 ),
               ),
@@ -1148,7 +1183,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
+                        color: _conversationEmphasisColor(context),
                         height: 1.0,
                       ),
                     ),
@@ -1217,7 +1252,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               Icon(
                                 Lucide.Eye,
                                 size: 14,
-                                color: cs.onSurface.withValues(alpha: 0.6),
+                                color: _conversationMutedColor(context),
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -1226,7 +1261,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 )!.codeBlockPreviewButton,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: cs.onSurface.withValues(alpha: 0.6),
+                                  color: _conversationMutedColor(context),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1269,7 +1304,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                             Icon(
                               Lucide.Copy,
                               size: 14,
-                              color: cs.onSurface.withValues(alpha: 0.6),
+                              color: _conversationMutedColor(context),
                             ),
                             const SizedBox(width: 6),
                             Text(
@@ -1278,7 +1313,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               )!.shareProviderSheetCopyButton,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: cs.onSurface.withValues(alpha: 0.6),
+                                color: _conversationMutedColor(context),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1294,7 +1329,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       child: Icon(
                         Lucide.ChevronRight,
                         size: 16,
-                        color: cs.onSurface.withValues(alpha: 0.7),
+                        color: _conversationMutedColor(context, alpha: 0.78),
                       ),
                     ),
                   ],
@@ -1447,7 +1482,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 fontFamily: codeFontFamily,
                                 fontSize: 13,
                                 height: 1.5,
-                                color: cs.onSurface,
+                                color: _conversationBaseColor(context),
                               ),
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,
@@ -1460,7 +1495,10 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   height: 1.4,
-                                  color: cs.onSurface.withValues(alpha: 0.55),
+                                  color: _conversationMutedColor(
+                                    context,
+                                    alpha: 0.55,
+                                  ),
                                 ),
                                 softWrap: false,
                                 overflow: TextOverflow.ellipsis,
@@ -1579,21 +1617,21 @@ class _MermaidBlockState extends State<_MermaidBlock> {
       'background': hex(cs.surface),
       'mainBkg': hex(cs.primaryContainer),
       'secondBkg': hex(cs.secondaryContainer),
-      'lineColor': hex(cs.onSurface),
-      'textColor': hex(cs.onSurface),
+      'lineColor': hex(_conversationBaseColor(context)),
+      'textColor': hex(_conversationBaseColor(context)),
       'nodeBkg': hex(cs.surface),
       'nodeBorder': hex(cs.primary),
       'clusterBkg': hex(cs.surface),
       'clusterBorder': hex(cs.primary),
       'actorBorder': hex(cs.primary),
       'actorBkg': hex(cs.surface),
-      'actorTextColor': hex(cs.onSurface),
+      'actorTextColor': hex(_conversationBaseColor(context)),
       'actorLineColor': hex(cs.primary),
       'taskBorderColor': hex(cs.primary),
       'taskBkgColor': hex(cs.primary),
       'taskTextLightColor': hex(cs.onPrimary),
-      'taskTextDarkColor': hex(cs.onSurface),
-      'labelColor': hex(cs.onSurface),
+      'taskTextDarkColor': hex(_conversationBaseColor(context)),
+      'labelColor': hex(_conversationBaseColor(context)),
       'errorBkgColor': hex(cs.error),
       'errorTextColor': hex(cs.onError),
     };
@@ -1670,7 +1708,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: cs.onSurface,
+                        color: _conversationEmphasisColor(context),
                         height: 1.0,
                       ),
                     ),
@@ -1711,7 +1749,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                               Icon(
                                 Lucide.Copy,
                                 size: 14,
-                                color: cs.onSurface.withValues(alpha: 0.6),
+                                color: _conversationMutedColor(context),
                               ),
                               const SizedBox(width: 6),
                               Text(
@@ -1720,7 +1758,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                 )!.shareProviderSheetCopyButton,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: cs.onSurface.withValues(alpha: 0.6),
+                                  color: _conversationMutedColor(context),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1767,7 +1805,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                             child: Icon(
                               Lucide.Download,
                               size: 14,
-                              color: cs.onSurface.withValues(alpha: 0.6),
+                              color: _conversationMutedColor(context),
                             ),
                           ),
                         ),
@@ -1780,7 +1818,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                         child: Icon(
                           Lucide.ChevronRight,
                           size: 16,
-                          color: cs.onSurface.withValues(alpha: 0.7),
+                          color: _conversationMutedColor(context, alpha: 0.78),
                         ),
                       ),
                     ],
@@ -2252,7 +2290,6 @@ class AtxHeadingMd extends BlockMd {
     GptMarkdownConfig cfg,
     int level,
   ) {
-    final cs = Theme.of(ctx).colorScheme;
     final isZh = MarkdownWithCodeHighlight._isZh(ctx);
     final settings = ctx.read<SettingsProvider>();
     String? appFamily;
@@ -2307,7 +2344,7 @@ class AtxHeadingMd extends BlockMd {
       fontWeight: weight,
       height: h,
       letterSpacing: ls,
-      color: cs.onSurface,
+      color: _conversationEmphasisColor(ctx),
       fontFamily: appFamily,
       fontFamilyFallback: getPlatformFontFallback(),
     );
@@ -2380,11 +2417,11 @@ class LabelValueLineMd extends InlineMd {
         (config.style ?? t.bodyMedium ?? const TextStyle(fontSize: 14));
     final labelStyle = base.copyWith(
       fontWeight: FontWeight.w700, // 与 ** 加粗视觉一致
-      color: cs.onSurface,
+      color: _conversationEmphasisColor(context),
     );
     final valueStyle = base.copyWith(
       fontWeight: FontWeight.w400,
-      color: cs.onSurface.withValues(alpha: 0.92),
+      color: _conversationMutedColor(context, alpha: 0.92),
     );
 
     // 将值部分继续按 markdown 解析，保证链接/引用等语法正常
@@ -2477,7 +2514,7 @@ class ModernCheckBoxMd extends BlockMd {
 
     final contentStyle = (config.style ?? const TextStyle()).copyWith(
       decoration: checked ? TextDecoration.lineThrough : null,
-      color: (config.style?.color ?? cs.onSurface).withValues(
+      color: (config.style?.color ?? _conversationBaseColor(context)).withValues(
         alpha: checked ? 0.75 : 1.0,
       ),
     );
@@ -2536,7 +2573,7 @@ class ModernRadioMd extends BlockMd {
     final cs = Theme.of(context).colorScheme;
 
     final contentStyle = (config.style ?? const TextStyle()).copyWith(
-      color: (config.style?.color ?? cs.onSurface).withValues(
+      color: (config.style?.color ?? _conversationBaseColor(context)).withValues(
         alpha: selected ? 0.95 : 1.0,
       ),
     );

@@ -3423,6 +3423,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageThemeColorTitle => 'Theme Color';
 
   @override
+  String get displaySettingsPageConversationTextColorTitle =>
+      'Conversation Text Color';
+
+  @override
+  String get displaySettingsPageConversationTextColorDialogTitle =>
+      'Conversation Text Color';
+
+  @override
+  String get displaySettingsPageConversationTextColorPreview => 'Preview';
+
+  @override
   String get desktopSettingsFontsTitle => 'Fonts';
 
   @override

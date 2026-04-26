@@ -6386,6 +6386,24 @@ abstract class AppLocalizations {
   /// **'Theme Color'**
   String get displaySettingsPageThemeColorTitle;
 
+  /// No description provided for @displaySettingsPageConversationTextColorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation Text Color'**
+  String get displaySettingsPageConversationTextColorTitle;
+
+  /// No description provided for @displaySettingsPageConversationTextColorDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation Text Color'**
+  String get displaySettingsPageConversationTextColorDialogTitle;
+
+  /// No description provided for @displaySettingsPageConversationTextColorPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get displaySettingsPageConversationTextColorPreview;
+
   /// No description provided for @desktopSettingsFontsTitle.
   ///
   /// In en, this message translates to:

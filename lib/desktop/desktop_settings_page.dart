@@ -40,6 +40,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
 import 'desktop_context_menu.dart';
 import '../shared/widgets/snackbar.dart';
+import '../shared/dialogs/conversation_text_color_dialog.dart';
 import 'setting/default_model_pane.dart';
 import 'setting/search_services_pane.dart';
 import 'setting/mcp_pane.dart';

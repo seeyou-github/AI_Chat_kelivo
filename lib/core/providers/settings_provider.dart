@@ -141,6 +141,10 @@ class SettingsProvider extends ChangeNotifier {
       'display_enter_to_send_on_mobile_v1';
   static const String _desktopSendShortcutKey = 'desktop_send_shortcut_v1';
   static const String _displayChatFontScaleKey = 'display_chat_font_scale_v1';
+  static const String _displayConversationTextLightColorKey =
+      'display_conversation_text_light_color_v1';
+  static const String _displayConversationTextDarkColorKey =
+      'display_conversation_text_dark_color_v1';
   static const String _displayAutoScrollEnabledKey =
       'display_auto_scroll_enabled_v1';
   static const String _displayAutoScrollIdleSecondsKey =
@@ -821,6 +825,12 @@ class SettingsProvider extends ChangeNotifier {
         _desktopSendShortcut = DesktopSendShortcut.enter;
     }
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
+    _conversationTextLightColorValue = prefs.getInt(
+      _displayConversationTextLightColorKey,
+    );
+    _conversationTextDarkColorValue = prefs.getInt(
+      _displayConversationTextDarkColorKey,
+    );
     _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
     _autoScrollIdleSeconds =
         prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
@@ -2912,6 +2922,35 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   // Display: chat font scale (0.5 - 1.5, default 1.0)
   double _chatFontScale = 1.0;
   double get chatFontScale => _chatFontScale;
+  static const Color _defaultConversationTextLightColor = Color(0xFF1A1B21);
+  static const Color _defaultConversationTextDarkColor = Color(0xFFF1F0F7);
+  int? _conversationTextLightColorValue;
+  int? _conversationTextDarkColorValue;
+  Color get conversationTextLightColor =>
+      _colorFromValue(_conversationTextLightColorValue) ??
+      _defaultConversationTextLightColor;
+  Color get conversationTextDarkColor =>
+      _colorFromValue(_conversationTextDarkColorValue) ??
+      _defaultConversationTextDarkColor;
+  Color resolveConversationTextColor(
+    Brightness brightness, {
+    Color? fallback,
+  }) {
+    if (brightness == Brightness.dark) {
+      return _colorFromValue(_conversationTextDarkColorValue) ??
+          fallback ??
+          _defaultConversationTextDarkColor;
+    }
+    return _colorFromValue(_conversationTextLightColorValue) ??
+        fallback ??
+        _defaultConversationTextLightColor;
+  }
+
+  static Color? _colorFromValue(int? value) {
+    if (value == null) return null;
+    return Color(value);
+  }
+
   Future<void> setChatFontScale(double scale) async {
     final s = scale.clamp(0.5, 1.5);
     if (_chatFontScale == s) return;
@@ -2919,6 +2958,39 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_displayChatFontScaleKey, _chatFontScale);
+  }
+
+  Future<void> setConversationTextLightColor(Color color) async {
+    final value = color.toARGB32();
+    if (_conversationTextLightColorValue == value) return;
+    _conversationTextLightColorValue = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayConversationTextLightColorKey, value);
+  }
+
+  Future<void> setConversationTextDarkColor(Color color) async {
+    final value = color.toARGB32();
+    if (_conversationTextDarkColorValue == value) return;
+    _conversationTextDarkColorValue = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayConversationTextDarkColorKey, value);
+  }
+
+  Future<void> resetConversationTextColor(Brightness brightness) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (brightness == Brightness.dark) {
+      if (_conversationTextDarkColorValue == null) return;
+      _conversationTextDarkColorValue = null;
+      notifyListeners();
+      await prefs.remove(_displayConversationTextDarkColorKey);
+      return;
+    }
+    if (_conversationTextLightColorValue == null) return;
+    _conversationTextLightColorValue = null;
+    notifyListeners();
+    await prefs.remove(_displayConversationTextLightColorKey);
   }
 
   // Display: auto-scroll back to bottom toggle
@@ -3417,6 +3489,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._newChatOnAssistantSwitch = _newChatOnAssistantSwitch;
     copy._newChatAfterDelete = _newChatAfterDelete;
     copy._chatFontScale = _chatFontScale;
+    copy._conversationTextLightColorValue = _conversationTextLightColorValue;
+    copy._conversationTextDarkColorValue = _conversationTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;
     copy._autoScrollIdleSeconds = _autoScrollIdleSeconds;
     copy._enableDollarLatex = _enableDollarLatex;

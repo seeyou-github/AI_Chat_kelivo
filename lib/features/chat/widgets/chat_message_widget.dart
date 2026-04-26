@@ -1220,6 +1220,11 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               defaultTargetPlatform == TargetPlatform.windows ||
                               defaultTargetPlatform == TargetPlatform.linux;
                           final double baseUser = isDesktop ? 14.0 : 15.5;
+                          final conversationTextColor =
+                              settings.resolveConversationTextColor(
+                                Theme.of(context).brightness,
+                                fallback: cs.onSurface,
+                              );
 
                           Widget content;
                           if (settings.enableUserMarkdown) {
@@ -1227,12 +1232,14 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               style: TextStyle(
                                 fontSize: baseUser,
                                 height: 1.45,
+                                color: conversationTextColor,
                               ),
                               child: MarkdownWithCodeHighlight(
                                 text: visualText,
                                 baseStyle: TextStyle(
                                   fontSize: baseUser,
                                   height: 1.45,
+                                  color: conversationTextColor,
                                 ),
                               ),
                             );
@@ -1243,7 +1250,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 fontSize:
                                     baseUser, // slightly smaller on desktop for readability
                                 height: 1.4,
-                                color: cs.onSurface,
+                                color: conversationTextColor,
                               ),
                             );
                           }
@@ -1732,13 +1739,21 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
     final double baseAssistant = isDesktop ? 14.0 : 15.7;
+    final conversationTextColor = settings.resolveConversationTextColor(
+      Theme.of(context).brightness,
+      fallback: cs.onSurface,
+    );
 
     Widget assistantContent;
     if (settings.enableAssistantMarkdown) {
       assistantContent = MarkdownWithCodeHighlight(
         text: visualContent,
         onCitationTap: (id) => _handleCitationTap(id),
-        baseStyle: TextStyle(fontSize: baseAssistant, height: 1.5),
+        baseStyle: TextStyle(
+          fontSize: baseAssistant,
+          height: 1.5,
+          color: conversationTextColor,
+        ),
       );
     } else {
       assistantContent = Text(
@@ -1746,7 +1761,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         style: TextStyle(
           fontSize: baseAssistant,
           height: 1.5,
-          color: cs.onSurface,
+          color: conversationTextColor,
         ),
       );
     }
@@ -2269,6 +2284,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                             baseStyle: TextStyle(
                                               fontSize: baseTranslation,
                                               height: 1.4,
+                                              color: conversationTextColor,
                                             ),
                                           );
                                     } else {
@@ -2277,7 +2293,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                         style: TextStyle(
                                           fontSize: baseTranslation,
                                           height: 1.4,
-                                          color: cs.onSurface,
+                                          color: conversationTextColor,
                                         ),
                                       );
                                     }
@@ -2285,6 +2301,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                       style: TextStyle(
                                         fontSize: baseTranslation,
                                         height: 1.4,
+                                        color: conversationTextColor,
                                       ),
                                       child: translationContent,
                                     );
@@ -5246,7 +5263,14 @@ class _ReasoningSectionState extends State<_ReasoningSection>
     // 抽公共样式，继承当前 DefaultTextStyle（从而继承正确的颜色）
     final TextStyle baseStyle = DefaultTextStyle.of(
       context,
-    ).style.copyWith(fontSize: 12.5, height: 1.32);
+    ).style.copyWith(
+      fontSize: 12.5,
+      height: 1.32,
+      color: settings.resolveConversationTextColor(
+        Theme.of(context).brightness,
+        fallback: DefaultTextStyle.of(context).style.color,
+      ),
+    );
 
     const StrutStyle baseStrut = StrutStyle(
       forceStrutHeight: true,

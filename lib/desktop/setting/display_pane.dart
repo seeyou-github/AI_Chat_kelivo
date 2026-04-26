@@ -23,6 +23,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ThemeColorRow(),
                   _RowDivider(),
+                  _ConversationTextColorRow(),
+                  _RowDivider(),
                   _ToggleRowPureBackground(),
                   _RowDivider(),
                   _ChatMessageBackgroundRow(),
@@ -379,6 +381,21 @@ class _ThemeColorRow extends StatelessWidget {
     return _LabeledRow(
       label: l10n.displaySettingsPageThemeColorTitle,
       trailing: const _ThemeDots(),
+    );
+  }
+}
+
+class _ConversationTextColorRow extends StatelessWidget {
+  const _ConversationTextColorRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _LabeledRow(
+      label: l10n.displaySettingsPageConversationTextColorTitle,
+      trailing: GestureDetector(
+        onTap: () => showConversationTextColorDialog(context),
+        child: const ConversationTextColorPreview(showLabels: true),
+      ),
     );
   }
 }

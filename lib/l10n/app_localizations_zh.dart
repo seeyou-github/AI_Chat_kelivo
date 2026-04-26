@@ -3288,6 +3288,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageThemeColorTitle => '主题颜色';
 
   @override
+  String get displaySettingsPageConversationTextColorTitle => '对话界面文字颜色';
+
+  @override
+  String get displaySettingsPageConversationTextColorDialogTitle =>
+      '对话界面文字颜色';
+
+  @override
+  String get displaySettingsPageConversationTextColorPreview => '预览';
+
+  @override
   String get desktopSettingsFontsTitle => '字体设置';
 
   @override
@@ -7597,6 +7607,16 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageThemeColorTitle => '主题颜色';
 
   @override
+  String get displaySettingsPageConversationTextColorTitle => '对话界面文字颜色';
+
+  @override
+  String get displaySettingsPageConversationTextColorDialogTitle =>
+      '对话界面文字颜色';
+
+  @override
+  String get displaySettingsPageConversationTextColorPreview => '预览';
+
+  @override
   String get desktopSettingsFontsTitle => '字体设置';
 
   @override
@@ -11902,6 +11922,16 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageThemeColorTitle => '主題顏色';
+
+  @override
+  String get displaySettingsPageConversationTextColorTitle => '對話介面文字顏色';
+
+  @override
+  String get displaySettingsPageConversationTextColorDialogTitle =>
+      '對話介面文字顏色';
+
+  @override
+  String get displaySettingsPageConversationTextColorPreview => '預覽';
 
   @override
   String get desktopSettingsFontsTitle => '字體設定';
