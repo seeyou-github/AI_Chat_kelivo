@@ -50,6 +50,7 @@ final RouteObserver<ModalRoute<dynamic>> routeObserver =
     RouteObserver<ModalRoute<dynamic>>();
 bool _didCheckUpdates = false; // one-time update check flag
 bool _didEnsureAssistants = false; // ensure defaults after l10n ready
+SharedPreferences? _bootstrapPrefs;
 
 Future<void> main() async {
   await runZoned(
@@ -58,8 +59,9 @@ Future<void> main() async {
       await WindowsPortableStorage.installIfNeeded();
       FlutterLogger.installGlobalHandlers();
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final enabled = prefs.getBool('flutter_log_enabled_v1') ?? false;
+        _bootstrapPrefs = await SharedPreferences.getInstance();
+        final enabled =
+            _bootstrapPrefs!.getBool('flutter_log_enabled_v1') ?? false;
         await FlutterLogger.setEnabled(enabled);
       } catch (_) {}
       // Trim Flutter global image cache to reduce memory pressure from large images
@@ -82,7 +84,7 @@ Future<void> main() async {
       // Enable edge-to-edge to allow content under system bars (Android)
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       // Start app (Flutter log capture is toggleable and off by default)
-      runApp(const MyApp());
+      runApp(MyApp(initialPrefs: _bootstrapPrefs));
     },
     zoneSpecification: ZoneSpecification(
       print: (self, parent, zone, line) {
@@ -110,7 +112,9 @@ Future<void> _initDesktopWindow() async {
 // Removed eager system font preloading to reduce memory footprint at launch.
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.initialPrefs});
+
+  final SharedPreferences? initialPrefs;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +122,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(
+          create: (_) => SettingsProvider(initialPrefs: initialPrefs),
+        ),
         ChangeNotifierProvider(create: (_) => ChatService()),
         ChangeNotifierProvider(create: (_) => McpToolService()),
         ChangeNotifierProvider(create: (_) => McpProvider()),

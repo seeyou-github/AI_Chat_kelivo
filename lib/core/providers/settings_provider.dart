@@ -407,8 +407,37 @@ class SettingsProvider extends ChangeNotifier {
   String get globalProxyPassword => _globalProxyPassword;
   String get globalProxyBypass => _globalProxyBypass;
 
-  SettingsProvider() {
-    _load();
+  SettingsProvider({SharedPreferences? initialPrefs}) {
+    if (initialPrefs != null) {
+      _applyInitialDisplayPreferences(initialPrefs);
+    }
+    _load(initialPrefs: initialPrefs);
+  }
+
+  void _applyInitialDisplayPreferences(SharedPreferences prefs) {
+    final m = prefs.getString(_themeModeKey);
+    switch (m) {
+      case 'light':
+        _themeMode = ThemeMode.light;
+        break;
+      case 'dark':
+        _themeMode = ThemeMode.dark;
+        break;
+      default:
+        _themeMode = ThemeMode.system;
+    }
+
+    _themePaletteId = prefs.getString(_themePaletteKey) ?? 'default';
+    _useDynamicColor = prefs.getBool(_useDynamicColorKey) ?? true;
+
+    final pureBgPref = prefs.getBool(_displayUsePureBackgroundKey);
+    if (pureBgPref == null) {
+      final isDesktop =
+          Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      _usePureBackground = isDesktop;
+    } else {
+      _usePureBackground = pureBgPref;
+    }
   }
 
   Future<_MigrationResult> _migrateEmbeddingModelOverrides(
@@ -486,8 +515,8 @@ class SettingsProvider extends ChangeNotifier {
     return _MigrationResult.applied;
   }
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _load({SharedPreferences? initialPrefs}) async {
+    final prefs = initialPrefs ?? await SharedPreferences.getInstance();
     _providersOrder = prefs.getStringList(_providersOrderKey) ?? [];
     final m = prefs.getString(_themeModeKey);
     switch (m) {
