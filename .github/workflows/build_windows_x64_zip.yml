@@ -1,0 +1,90 @@
+name: Build Windows x64 ZIP
+
+env:
+  FLUTTER_VERSION: "3.38.5"
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish GitHub Release"
+        required: false
+        default: false
+        type: boolean
+      release_tag:
+        description: "Release tag, for example v1.0.0"
+        required: false
+        default: ""
+        type: string
+      prerelease:
+        description: "Mark release as pre-release"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  windows_x64_zip:
+    name: Build Windows x64 ZIP
+    runs-on: windows-latest
+    permissions: write-all
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Inject fallback secret
+        shell: bash
+        run: |
+          mkdir -p lib/secrets
+          cat > lib/secrets/fallback.dart <<'EOF'
+          const String siliconflowFallbackKey = '${{ secrets.SILICONFLOW_KEY }}';
+          EOF
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Resolve version
+        shell: pwsh
+        run: |
+          $version = (Select-String -Path pubspec.yaml -Pattern "version:" | ForEach-Object { $_.Line.Split(":")[1].Trim() })
+          if ("${{ github.event.inputs.publish_release }}" -ne "true") {
+            $shortSha = git rev-parse --short HEAD
+            $version = "$version`_$shortSha"
+          }
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+          Write-Host "VERSION resolved to $version"
+
+      - name: Build Windows x64
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "build/windows/x64/runner/Release/*" -DestinationPath "Kelivo_windows_$env:VERSION.zip"
+
+      - name: Publish GitHub Release
+        if: ${{ github.event.inputs.publish_release == 'true' && github.event.inputs.release_tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.release_tag }}
+          name: ${{ github.event.inputs.release_tag }}
+          prerelease: ${{ github.event.inputs.prerelease }}
+          files: Kelivo_windows_*.zip
+
+      - name: Upload Windows ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows-ZIP
+          path: Kelivo_windows_*.zip
