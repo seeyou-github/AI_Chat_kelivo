@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 /// Platform-specific application data directory utilities.
@@ -11,16 +12,116 @@ import 'package:path_provider/path_provider.dart';
 class AppDirectories {
   AppDirectories._();
 
+  static Future<void>? _windowsPortableInit;
+
+  static bool get _isWindowsDesktop =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+
+  static Future<void> ensureWindowsPortableStorageReady() async {
+    if (!_isWindowsDesktop) return;
+    _windowsPortableInit ??= _initializeWindowsPortableStorage();
+    await _windowsPortableInit;
+  }
+
+  static Future<void> _initializeWindowsPortableStorage() async {
+    final root = await _getWindowsPortableRootDirectory();
+    final configDir = Directory(p.join(root.path, 'Config'));
+    final cacheDir = Directory(p.join(root.path, 'cache'));
+    if (!await configDir.exists()) {
+      await configDir.create(recursive: true);
+    }
+    if (!await cacheDir.exists()) {
+      await cacheDir.create(recursive: true);
+    }
+    await _migrateWindowsLegacyData(configDir: configDir, cacheDir: cacheDir);
+  }
+
+  static Future<Directory> _getWindowsPortableRootDirectory() async {
+    final exeDir = File(Platform.resolvedExecutable).parent;
+    final root = Directory(p.join(exeDir.path, 'AppData'));
+    if (!await root.exists()) {
+      await root.create(recursive: true);
+    }
+    return root;
+  }
+
+  static Future<void> _migrateWindowsLegacyData({
+    required Directory configDir,
+    required Directory cacheDir,
+  }) async {
+    final marker = File(p.join(configDir.parent.path, '.portable_storage_migrated_v1'));
+    if (await marker.exists()) return;
+
+    final appData = Platform.environment['APPDATA'];
+    final localAppData = Platform.environment['LOCALAPPDATA'];
+    final roamingSource = appData == null
+        ? null
+        : Directory(p.join(appData, 'com.psyche', 'kelivo'));
+    final localSource = localAppData == null
+        ? null
+        : Directory(p.join(localAppData, 'com.psyche', 'kelivo'));
+
+    if (roamingSource != null && await roamingSource.exists()) {
+      await _copyDirectoryContents(roamingSource, configDir);
+    }
+    if (localSource != null && await localSource.exists()) {
+      final legacyCache = Directory(p.join(localSource.path, 'cache'));
+      if (await legacyCache.exists()) {
+        await _copyDirectoryContents(legacyCache, cacheDir);
+      }
+      await _copyDirectoryContents(
+        localSource,
+        configDir,
+        skipNames: const {'cache'},
+      );
+    }
+
+    try {
+      await marker.writeAsString('ok', flush: true);
+    } catch (_) {}
+  }
+
+  static Future<void> _copyDirectoryContents(
+    Directory source,
+    Directory destination, {
+    Set<String> skipNames = const <String>{},
+  }) async {
+    await for (final entity in source.list(recursive: false, followLinks: false)) {
+      final name = p.basename(entity.path);
+      if (skipNames.contains(name)) continue;
+      if (entity is Directory) {
+        final next = Directory(p.join(destination.path, name));
+        if (!await next.exists()) {
+          await next.create(recursive: true);
+        }
+        await _copyDirectoryContents(entity, next);
+        continue;
+      }
+      if (entity is File) {
+        final target = File(p.join(destination.path, name));
+        if (await target.exists()) continue;
+        try {
+          await entity.copy(target.path);
+        } catch (_) {}
+      }
+    }
+  }
+
   /// Gets the root directory for application data storage.
   ///
   /// - Windows/macOS/Linux: Application Support directory
   /// - Android/iOS: Application Documents directory
   static Future<Directory> getAppDataDirectory() async {
+    if (_isWindowsDesktop) {
+      await ensureWindowsPortableStorageReady();
+      final root = await _getWindowsPortableRootDirectory();
+      return Directory(p.join(root.path, 'Config'));
+    }
     switch (defaultTargetPlatform) {
-      case TargetPlatform.windows:
       case TargetPlatform.macOS:
       case TargetPlatform.linux:
         return await getApplicationSupportDirectory();
+      case TargetPlatform.windows:
       case TargetPlatform.android:
       case TargetPlatform.iOS:
       case TargetPlatform.fuchsia:
@@ -48,6 +149,11 @@ class AppDirectories {
 
   /// Gets the directory for cache files.
   static Future<Directory> getCacheDirectory() async {
+    if (_isWindowsDesktop) {
+      await ensureWindowsPortableStorageReady();
+      final root = await _getWindowsPortableRootDirectory();
+      return Directory(p.join(root.path, 'cache'));
+    }
     final root = await getAppDataDirectory();
     return Directory('${root.path}/cache');
   }
@@ -58,6 +164,9 @@ class AppDirectories {
   /// - iOS/macOS: Caches directory
   /// - Windows/Linux: platform cache directory (app-specific on Linux via XDG)
   static Future<Directory> getSystemCacheDirectory() async {
+    if (_isWindowsDesktop) {
+      return getCacheDirectory();
+    }
     return await getApplicationCacheDirectory();
   }
 

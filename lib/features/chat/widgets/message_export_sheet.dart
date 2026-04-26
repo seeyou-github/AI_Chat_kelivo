@@ -8,7 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as p;
@@ -23,6 +22,7 @@ import '../../../core/providers/user_provider.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/models/assistant.dart';
 import '../../../core/services/chat/chat_service.dart';
+import '../../../utils/app_directories.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../shared/widgets/markdown_with_highlight.dart';
 import '../../../shared/widgets/export_capture_scope.dart';
@@ -853,7 +853,10 @@ Future<File?> _renderWidgetDirectly(
     if (data == null) return null;
 
     // Save to file
-    final dir = await getTemporaryDirectory();
+    final dir = await AppDirectories.getSystemCacheDirectory();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
     final file = File(
       '${dir.path}/chat-export-${DateTime.now().millisecondsSinceEpoch}.png',
     );

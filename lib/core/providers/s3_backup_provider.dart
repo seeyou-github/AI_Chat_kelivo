@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../models/backup.dart';
 import '../services/backup/data_sync.dart';
 import '../services/backup/s3_client.dart';
 import '../services/chat/chat_service.dart';
+import '../../utils/app_directories.dart';
 
 class S3BackupProvider extends ChangeNotifier {
   final DataSync _dataSync;
@@ -48,13 +48,13 @@ class S3BackupProvider extends ChangeNotifier {
   }
 
   Future<Directory> _ensureTempDir() async {
-    Directory dir = await getTemporaryDirectory();
+    Directory dir = await AppDirectories.getSystemCacheDirectory();
     if (!await dir.exists()) {
       try {
         await dir.create(recursive: true);
       } catch (_) {}
     }
-    if (!await dir.exists()) {
+    if (!await dir.exists() && !Platform.isWindows) {
       dir = await Directory.systemTemp.createTemp('kelivo_tmp_');
     }
     return dir;

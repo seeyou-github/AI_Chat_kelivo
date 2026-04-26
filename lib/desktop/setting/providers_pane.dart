@@ -4987,8 +4987,12 @@ class _DesktopProviderShareDialogState
     } catch (_) {}
 
     try {
+      final cacheDir = await AppDirectories.getSystemCacheDirectory();
+      if (!await cacheDir.exists()) {
+        await cacheDir.create(recursive: true);
+      }
       final file = File(
-        p.join(Directory.systemTemp.path, 'kelivo-provider-qr.png'),
+        p.join(cacheDir.path, 'kelivo-provider-qr.png'),
       );
       await file.writeAsBytes(bytes, flush: true);
       return await ClipboardImages.setImagePath(file.path);

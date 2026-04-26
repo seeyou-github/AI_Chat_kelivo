@@ -6,7 +6,6 @@ import 'dart:isolate';
 import 'package:archive/archive_io.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xml/xml.dart';
 
@@ -421,13 +420,13 @@ class DataSync {
   // ===== Internal helpers =====
   /// Ensures the temporary directory exists (some macOS installs may not create the cache folder until first use).
   Future<Directory> _ensureTempDir() async {
-    Directory dir = await getTemporaryDirectory();
+    Directory dir = await AppDirectories.getSystemCacheDirectory();
     if (!await dir.exists()) {
       try {
         await dir.create(recursive: true);
       } catch (_) {}
     }
-    if (!await dir.exists()) {
+    if (!await dir.exists() && !Platform.isWindows) {
       dir = await Directory.systemTemp.createTemp('kelivo_tmp_');
     }
     return dir;

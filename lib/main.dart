@@ -43,6 +43,7 @@ import 'dart:io'
     show Platform; // kept for global override usage inside provider
 import 'core/services/android_background.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/storage/windows_portable_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
@@ -54,6 +55,7 @@ Future<void> main() async {
   await runZoned(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      await WindowsPortableStorage.installIfNeeded();
       FlutterLogger.installGlobalHandlers();
       try {
         final prefs = await SharedPreferences.getInstance();

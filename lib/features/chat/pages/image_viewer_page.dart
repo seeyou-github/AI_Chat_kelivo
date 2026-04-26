@@ -5,13 +5,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:open_filex/open_filex.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 import 'package:super_clipboard/super_clipboard.dart';
+import '../../../utils/app_directories.dart';
 import '../../../utils/sandbox_path_resolver.dart';
 import '../../../utils/clipboard_images.dart';
 import '../../../shared/widgets/snackbar.dart';
@@ -326,7 +326,10 @@ class _ImageViewerPageState extends State<ImageViewerPage>
         final i = src.indexOf('base64,');
         if (i != -1) {
           final bytes = base64Decode(src.substring(i + 7));
-          final tmp = await getTemporaryDirectory();
+          final tmp = await AppDirectories.getSystemCacheDirectory();
+          if (!await tmp.exists()) {
+            await tmp.create(recursive: true);
+          }
           temp = await File(
             p.join(
               tmp.path,
@@ -340,7 +343,10 @@ class _ImageViewerPageState extends State<ImageViewerPage>
         // Try download and share
         final resp = await http.get(Uri.parse(src));
         if (resp.statusCode >= 200 && resp.statusCode < 300) {
-          final tmp = await getTemporaryDirectory();
+          final tmp = await AppDirectories.getSystemCacheDirectory();
+          if (!await tmp.exists()) {
+            await tmp.create(recursive: true);
+          }
           final ext = p.extension(Uri.parse(src).path);
           temp = await File(
             p.join(
@@ -563,7 +569,10 @@ class _ImageViewerPageState extends State<ImageViewerPage>
       try {
         String? path = payload.sourcePath;
         if (path == null) {
-          final dir = await getTemporaryDirectory();
+          final dir = await AppDirectories.getSystemCacheDirectory();
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+          }
           final ext = payload.format == 'jpeg' ? '.jpg' : '.${payload.format}';
           path = p.join(
             dir.path,

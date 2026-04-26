@@ -8,9 +8,9 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as winweb;
 import 'mermaid_cache.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
+import '../../utils/app_directories.dart';
 
 class MermaidViewHandle {
   final Widget widget;
@@ -147,7 +147,10 @@ class _MermaidInlineWindowsViewState extends State<_MermaidInlineWindowsView> {
         mermaidJs,
         widget.themeVars,
       );
-      final dir = await getTemporaryDirectory();
+      final dir = await AppDirectories.getSystemCacheDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final file = File(
         '${dir.path}/mermaid_${DateTime.now().millisecondsSinceEpoch}.html',
       );

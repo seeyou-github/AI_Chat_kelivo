@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_windows/webview_windows.dart' as winweb;
-import 'package:path_provider/path_provider.dart';
 import 'dart:io' as io;
 import '../l10n/app_localizations.dart';
 import '../icons/lucide_adapter.dart';
 import '../shared/widgets/snackbar.dart';
 import '../shared/widgets/ios_tactile.dart';
+import '../utils/app_directories.dart';
 import 'dart:convert';
 
 Future<void> showHtmlPreviewDesktopDialog(
@@ -125,7 +125,10 @@ class _HtmlPreviewDialogState extends State<_HtmlPreviewDialog> {
   }
 
   Future<String> _writeTempHtml(String html) async {
-    final dir = await getTemporaryDirectory();
+    final dir = await AppDirectories.getSystemCacheDirectory();
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
     final file = io.File(
       '${dir.path}/html_preview_${DateTime.now().millisecondsSinceEpoch}.html',
     );

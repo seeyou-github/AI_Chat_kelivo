@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io' as io;
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter/foundation.dart';
 import 'dart:ui' as ui;
@@ -9,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../services/tts/network_tts.dart';
+import '../../utils/app_directories.dart';
 
 /// System TTS provider using flutter_tts.
 /// Keeps minimal state and simple chunked speaking for long text.
@@ -623,7 +623,10 @@ class TtsProvider extends ChangeNotifier {
       // On Darwin, playing raw bytes without a filename/mime may fail.
       // Persist to a temp file with a proper extension for AVPlayer.
       final ext = _extForMime(mime);
-      final dir = await getTemporaryDirectory();
+      final dir = await AppDirectories.getSystemCacheDirectory();
+      if (!await dir.exists()) {
+        await dir.create(recursive: true);
+      }
       final path = p.join(
         dir.path,
         'kelivo_tts_${DateTime.now().millisecondsSinceEpoch}.$ext',
