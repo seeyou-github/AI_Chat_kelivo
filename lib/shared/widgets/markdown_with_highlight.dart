@@ -59,6 +59,37 @@ Color _conversationAccentColor(BuildContext context, {Color? base}) {
   return Color.lerp(color, primary, 0.52) ?? primary;
 }
 
+double _markdownBaseFontSize(
+  BuildContext context, {
+  TextStyle? preferredStyle,
+  double fallback = 15.5,
+}) {
+  return preferredStyle?.fontSize ??
+      DefaultTextStyle.maybeOf(context)?.style.fontSize ??
+      Theme.of(context).textTheme.bodyMedium?.fontSize ??
+      fallback;
+}
+
+double _neutralizedChatScale(BuildContext context) {
+  final media = MediaQuery.maybeOf(context);
+  if (media == null) return 1.0;
+  final chatScale = context.read<SettingsProvider>().chatFontScale;
+  final currentScale = media.textScaler.scale(1);
+  if (chatScale <= 0) return currentScale;
+  return (currentScale / chatScale).clamp(0.5, 3.0);
+}
+
+Widget _withoutChatScale(BuildContext context, Widget child) {
+  final media = MediaQuery.maybeOf(context);
+  if (media == null) return child;
+  return MediaQuery(
+    data: media.copyWith(
+      textScaler: TextScaler.linear(_neutralizedChatScale(context)),
+    ),
+    child: child,
+  );
+}
+
 /// gpt_markdown with custom code block highlight and inline code styling.
 class MarkdownWithCodeHighlight extends StatelessWidget {
   const MarkdownWithCodeHighlight({
@@ -614,6 +645,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final bool isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
         final csCtx = Theme.of(ctx).colorScheme;
         final bg = isDarkCtx ? Colors.white12 : const Color(0xFFF1F3F5);
+        final codeFontSize = _markdownBaseFontSize(ctx, preferredStyle: style);
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
@@ -627,7 +659,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
             softened,
             style: TextStyle(
               fontFamily: codeFontFamily,
-              fontSize: 13,
+              fontSize: codeFontSize,
               height: 1.4,
             ).copyWith(color: csCtx.onSurface),
             softWrap: true,
@@ -1101,6 +1133,11 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = context.watch<SettingsProvider>();
+    final codeFontSize = _markdownBaseFontSize(context, fallback: 13.0);
+    final controlFontSize = math.max(12.0, codeFontSize - 1.0);
+    final neutralizedMedia = MediaQuery.of(
+      context,
+    ).copyWith(textScaler: TextScaler.linear(_neutralizedChatScale(context)));
     String resolveCodeFont() {
       final fam = settings.codeFontFamily;
       if (fam == null || fam.isEmpty) return 'monospace';
@@ -1143,12 +1180,14 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header layout: language (left) + copy action (icon + label) + expand/collapse icon
-          Material(
-            color: headerBg,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            child: InkWell(
+          MediaQuery(
+            data: neutralizedMedia,
+            child: Material(
+              color: headerBg,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              child: InkWell(
               onTap: () => setState(() {
                 _manuallyToggled = true;
                 _expanded = !_expanded;
@@ -1181,7 +1220,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                         widget.language,
                       ),
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: controlFontSize,
                         fontWeight: FontWeight.w700,
                         color: _conversationEmphasisColor(context),
                         height: 1.0,
@@ -1260,7 +1299,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                   context,
                                 )!.codeBlockPreviewButton,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: controlFontSize - 1,
                                   color: _conversationMutedColor(context),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1312,7 +1351,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 context,
                               )!.shareProviderSheetCopyButton,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: controlFontSize - 1,
                                 color: _conversationMutedColor(context),
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1334,6 +1373,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           ),
@@ -1378,7 +1418,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           padding: EdgeInsets.zero,
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
-                            fontSize: 13,
+                            fontSize: codeFontSize,
                             height: 1.5,
                           ),
                         );
@@ -1402,7 +1442,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           padding: EdgeInsets.zero,
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
-                            fontSize: 13,
+                            fontSize: codeFontSize,
                             height: 1.5,
                           ),
                         );
@@ -1425,7 +1465,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           padding: EdgeInsets.zero,
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
-                            fontSize: 13,
+                            fontSize: codeFontSize,
                             height: 1.5,
                           ),
                         ),
@@ -1480,7 +1520,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               line,
                               style: TextStyle(
                                 fontFamily: codeFontFamily,
-                                fontSize: 13,
+                                fontSize: codeFontSize,
                                 height: 1.5,
                                 color: _conversationBaseColor(context),
                               ),
@@ -1490,18 +1530,21 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           if (hiddenLines > 0)
                             Padding(
                               padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                l10n.codeBlockCollapsedLines(hiddenLines),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  height: 1.4,
-                                  color: _conversationMutedColor(
-                                    context,
-                                    alpha: 0.55,
+                              child: _withoutChatScale(
+                                context,
+                                Text(
+                                  l10n.codeBlockCollapsedLines(hiddenLines),
+                                  style: TextStyle(
+                                    fontSize: controlFontSize - 1,
+                                    height: 1.4,
+                                    color: _conversationMutedColor(
+                                      context,
+                                      alpha: 0.55,
+                                    ),
                                   ),
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                softWrap: false,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                         ],
@@ -1580,6 +1623,11 @@ class _MermaidBlockState extends State<_MermaidBlock> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final codeFontSize = _markdownBaseFontSize(context, fallback: 13.0);
+    final controlFontSize = math.max(12.0, codeFontSize - 1.0);
+    final neutralizedMedia = MediaQuery.of(
+      context,
+    ).copyWith(textScaler: TextScaler.linear(_neutralizedChatScale(context)));
 
     // Use theme-tinted surfaces so headers follow the current theme color.
     final Color bodyBg = Color.alphaBlend(
@@ -1671,12 +1719,14 @@ class _MermaidBlockState extends State<_MermaidBlock> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Header: left label (mermaid), right actions (copy label + export + chevron)
-          Material(
-            color: headerBg,
-            elevation: 0,
-            shadowColor: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            child: InkWell(
+          MediaQuery(
+            data: neutralizedMedia,
+            child: Material(
+              color: headerBg,
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              child: InkWell(
               onTap: () => setState(() => _expanded = !_expanded),
               splashColor: Platform.isIOS ? Colors.transparent : null,
               highlightColor: Platform.isIOS ? Colors.transparent : null,
@@ -1706,7 +1756,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                     Text(
                       'mermaid',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: controlFontSize,
                         fontWeight: FontWeight.w700,
                         color: _conversationEmphasisColor(context),
                         height: 1.0,
@@ -1757,7 +1807,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                   context,
                                 )!.shareProviderSheetCopyButton,
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: controlFontSize - 1,
                                   color: _conversationMutedColor(context),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1825,6 +1875,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                   ],
                 ),
               ),
+              ),
             ),
           ),
           AnimatedSwitcher(
@@ -1871,9 +1922,9 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                             : githubTheme,
                                       ),
                                   padding: EdgeInsets.zero,
-                                  textStyle: const TextStyle(
+                                  textStyle: TextStyle(
                                     fontFamily: 'monospace',
-                                    fontSize: 13,
+                                    fontSize: codeFontSize,
                                     height: 1.5,
                                   ),
                                 ),
@@ -1914,9 +1965,9 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                                   : githubTheme,
                                             ),
                                         padding: EdgeInsets.zero,
-                                        textStyle: const TextStyle(
+                                        textStyle: TextStyle(
                                           fontFamily: 'monospace',
-                                          fontSize: 13,
+                                          fontSize: codeFontSize,
                                           height: 1.5,
                                         ),
                                       ),
@@ -2262,25 +2313,17 @@ class AtxHeadingMd extends BlockMd {
       children: MarkdownComponent.generate(context, raw, innerCfg, true),
     );
     final style = _headingTextStyle(context, config, level);
-    // Slightly tighter spacing between headings and body
-    final top = switch (level) {
-      1 => 2.0,
-      2 => 2.0,
-      _ => 2.0,
-    };
-    final bottom = switch (level) {
-      1 => 2.0,
-      2 => 2.0,
-      3 => 2.0,
-      _ => 2.0,
-    };
+    final underlineColor = _conversationMutedColor(context, alpha: 0.22);
 
     return Padding(
-      padding: EdgeInsets.only(top: top, bottom: bottom),
-      child: DefaultTextStyle.merge(
-        // Use selection-aware renderer from config so headings can be selected/copied
-        style: style,
-        child: config.getRich(inner),
+      padding: const EdgeInsets.only(top: 4, bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DefaultTextStyle.merge(style: style, child: config.getRich(inner)),
+          const SizedBox(height: 4),
+          Container(height: 1, color: underlineColor),
+        ],
       ),
     );
   }
@@ -2302,33 +2345,15 @@ class AtxHeadingMd extends BlockMd {
         } catch (_) {}
       }
     }
-    // Start from Material styles but tighten sizes for balance with body text
-    TextStyle base;
-    // Explicit sizes ensure visible contrast over the body (16.0)
-    switch (level) {
-      case 1:
-        base = const TextStyle(fontSize: 24);
-        break;
-      case 2:
-        base = const TextStyle(fontSize: 20);
-        break;
-      case 3:
-        base = const TextStyle(fontSize: 18);
-        break;
-      case 4:
-        base = const TextStyle(fontSize: 16);
-        break;
-      case 5:
-        base = const TextStyle(fontSize: 15);
-        break;
-      default:
-        base = const TextStyle(fontSize: 14);
-    }
+    final base = TextStyle(
+      fontSize: _markdownBaseFontSize(ctx, preferredStyle: cfg.style) +
+          (7 - level).toDouble(),
+    );
     final weight = switch (level) {
       1 => FontWeight.w700,
       2 => FontWeight.w600,
       3 => FontWeight.w600,
-      _ => FontWeight.w500,
+      _ => FontWeight.w600,
     };
     final ls = switch (level) {
       1 => isZh ? 0.0 : 0.1,
@@ -2369,16 +2394,17 @@ class SetextHeadingMd extends BlockMd {
       children: MarkdownComponent.generate(context, title, innerCfg, true),
     );
     final style = AtxHeadingMd()._headingTextStyle(context, config, level);
-    // Match the tighter spacing used in ATX headings
-    final top = level == 1 ? 10.0 : 9.0;
-    final bottom = 6.0;
+    final underlineColor = _conversationMutedColor(context, alpha: 0.22);
 
     return Padding(
-      padding: EdgeInsets.only(top: top, bottom: bottom),
-      child: DefaultTextStyle.merge(
-        // Use selection-aware renderer from config so headings can be selected/copied
-        style: style,
-        child: config.getRich(inner),
+      padding: const EdgeInsets.only(top: 4, bottom: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          DefaultTextStyle.merge(style: style, child: config.getRich(inner)),
+          const SizedBox(height: 4),
+          Container(height: 1, color: underlineColor),
+        ],
       ),
     );
   }

@@ -157,7 +157,7 @@ class _SideDrawerState extends State<SideDrawer> with TickerProviderStateMixin {
     }
     // Update check moved to app startup (main.dart)
     // Prepare desktop tabs controller (available when useDesktopTabs)
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
     _tabController!.addListener(_onDesktopTabChanged);
     // Reflect current index to bus and listen for external switches
     DesktopSidebarTabBus.instance.setCurrentIndex(_tabController!.index);
