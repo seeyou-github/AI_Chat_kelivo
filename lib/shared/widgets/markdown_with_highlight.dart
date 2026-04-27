@@ -357,13 +357,21 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           }
         }
         // Default link appearance
-        final cs = Theme.of(ctx).colorScheme;
+        final inheritedStyle = DefaultTextStyle.of(ctx).style;
+        final resolvedLinkStyle = _markdownResolvedTextStyle(
+          ctx,
+          style: inheritedStyle.merge(style),
+          color: _conversationAccentColor(ctx, base: conversationTextColor),
+        ).copyWith(
+          fontSize:
+              style.fontSize ??
+              inheritedStyle.fontSize ??
+              _markdownBaseFontSize(ctx, preferredStyle: baseTextStyle),
+          decoration: TextDecoration.none,
+        );
         return Text(
           span.toPlainText(),
-          style: style.copyWith(
-            color: _conversationAccentColor(ctx, base: conversationTextColor),
-            decoration: TextDecoration.none,
-          ),
+          style: resolvedLinkStyle,
           textAlign: TextAlign.start,
         );
       },
@@ -435,10 +443,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       tableBuilder: (ctx, rows, style, cfg) {
         final cs = Theme.of(ctx).colorScheme;
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        final tableFontSize = _markdownCodeFontSize(
-          ctx,
-          preferredStyle: style,
-        );
+        final tableFontSize = _markdownCodeFontSize(ctx);
         final borderColor = cs.outlineVariant.withValues(
           alpha: isDark ? 0.22 : 0.28,
         );
@@ -2588,9 +2593,19 @@ class ModernBlockQuote extends InlineMd {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.18 : 0.12);
     final accent = cs.primary.withValues(alpha: isDark ? 0.90 : 0.80);
+    final quoteStyle = _markdownResolvedTextStyle(
+      context,
+      style: config.style,
+      color: _conversationBaseColor(context),
+    ).copyWith(fontSize: _markdownCodeFontSize(context));
 
     final inner = TextSpan(
-      children: MarkdownComponent.generate(context, data, config, true),
+      children: MarkdownComponent.generate(
+        context,
+        data,
+        config.copyWith(style: quoteStyle),
+        true,
+      ),
     );
     final child = Directionality(
       textDirection: config.textDirection,
@@ -2603,7 +2618,10 @@ class ModernBlockQuote extends InlineMd {
         ),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          child: config.getRich(inner),
+          child: DefaultTextStyle.merge(
+            style: quoteStyle,
+            child: config.copyWith(style: quoteStyle).getRich(inner),
+          ),
         ),
       ),
     );
