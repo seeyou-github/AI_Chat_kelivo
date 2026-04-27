@@ -30,14 +30,8 @@ class DesktopWindowController with WindowListener {
       return;
     }
 
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      // Windows applies startup size and work-area centering natively before
-      // the first frame, avoiding an extra Dart-side reposition during launch.
-      _attachListeners();
-      return;
-    }
-
-    if (defaultTargetPlatform != TargetPlatform.windows) {
+    final isWindows = defaultTargetPlatform == TargetPlatform.windows;
+    if (!isWindows) {
       await windowManager.ensureInitialized();
     }
     _attachListeners();
@@ -63,6 +57,20 @@ class DesktopWindowController with WindowListener {
       maximumSize: isMac ? null : maxSize,
       title: title,
     );
+
+    if (isWindows) {
+      await windowManager.setMinimumSize(minSize);
+      await windowManager.setMaximumSize(maxSize);
+      await windowManager.setSize(initialSize);
+      try {
+        final position = await _sizeMgr.getCenteredStartupPosition(initialSize);
+        await windowManager.setPosition(position);
+      } catch (_) {}
+      if (title != null) {
+        await windowManager.setTitle(title);
+      }
+      return;
+    }
 
     await windowManager.waitUntilReadyToShow(options, () async {
       if (!isMac) {
@@ -91,6 +99,12 @@ class DesktopWindowController with WindowListener {
     _resizeDebounce = Timer(_debounceDuration, () async {
       await _persistWindowSize();
     });
+  }
+
+  @override
+  void onWindowResized() async {
+    _resizeDebounce?.cancel();
+    await _persistWindowSize();
   }
 
   @override

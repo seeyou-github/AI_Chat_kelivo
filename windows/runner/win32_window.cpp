@@ -43,6 +43,13 @@ struct StartupWindowPlacement {
   std::optional<int> height;
 };
 
+struct PhysicalWindowPlacement {
+  int x;
+  int y;
+  int width;
+  int height;
+};
+
 bool GetSystemDarkModePreference() {
   DWORD light_mode = 1;
   DWORD light_mode_size = sizeof(light_mode);
@@ -127,6 +134,12 @@ std::optional<int> SanitizeWindowDimension(std::optional<double> value) {
   return rounded;
 }
 
+// Scale helper to convert logical scaler values to physical using passed in
+// scale factor
+int Scale(int source, double scale_factor) {
+  return static_cast<int>(source * scale_factor);
+}
+
 StartupWindowPlacement GetConfiguredStartupWindowPlacement() {
   StartupWindowPlacement placement;
   const auto content = ReadPortablePreferencesJson();
@@ -141,21 +154,39 @@ StartupWindowPlacement GetConfiguredStartupWindowPlacement() {
   return placement;
 }
 
-POINT ResolveStartupOrigin(int fallback_x, int fallback_y, int width, int height) {
+PhysicalWindowPlacement ResolveStartupPlacement(int fallback_x,
+                                                int fallback_y,
+                                                int logical_width,
+                                                int logical_height) {
   POINT seed_point{static_cast<LONG>(fallback_x), static_cast<LONG>(fallback_y)};
   HMONITOR monitor = MonitorFromPoint(seed_point, MONITOR_DEFAULTTOPRIMARY);
+  UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
+  double scale_factor = dpi / 96.0;
+  const int physical_width = Scale(logical_width, scale_factor);
+  const int physical_height = Scale(logical_height, scale_factor);
+
   MONITORINFO monitor_info{};
   monitor_info.cbSize = sizeof(monitor_info);
   if (!GetMonitorInfo(monitor, &monitor_info)) {
-    return seed_point;
+    return PhysicalWindowPlacement{
+        Scale(fallback_x, scale_factor),
+        Scale(fallback_y, scale_factor),
+        physical_width,
+        physical_height,
+    };
   }
 
   const RECT work_area = monitor_info.rcWork;
   const int centered_x =
-      work_area.left + ((work_area.right - work_area.left) - width) / 2;
+      work_area.left + ((work_area.right - work_area.left) - physical_width) / 2;
   const int centered_y =
-      work_area.top + ((work_area.bottom - work_area.top) - height) / 2;
-  return POINT{static_cast<LONG>(centered_x), static_cast<LONG>(centered_y)};
+      work_area.top + ((work_area.bottom - work_area.top) - physical_height) / 2;
+  return PhysicalWindowPlacement{
+      centered_x,
+      centered_y,
+      physical_width,
+      physical_height,
+  };
 }
 
 bool ResolvePreferredDarkMode() {
@@ -172,12 +203,6 @@ void EnsureStartupBackgroundBrush() {
   const COLORREF light_startup_color = RGB(247, 247, 247);
   g_startup_background_brush = CreateSolidBrush(
       ResolvePreferredDarkMode() ? dark_startup_color : light_startup_color);
-}
-
-// Scale helper to convert logical scaler values to physical using passed in
-// scale factor
-int Scale(int source, double scale_factor) {
-  return static_cast<int>(source * scale_factor);
 }
 
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
@@ -289,19 +314,14 @@ bool Win32Window::Create(const std::wstring& title,
   const int logical_height =
       startup_placement.height.value_or(static_cast<int>(size.height));
 
-  const POINT resolved_origin = ResolveStartupOrigin(
+  const PhysicalWindowPlacement resolved_placement = ResolveStartupPlacement(
       static_cast<int>(origin.x), static_cast<int>(origin.y),
       logical_width, logical_height);
 
-  const POINT target_point = resolved_origin;
-  HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
-  UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
-  double scale_factor = dpi / 96.0;
-
   HWND window = CreateWindow(
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(resolved_origin.x, scale_factor), Scale(resolved_origin.y, scale_factor),
-      Scale(logical_width, scale_factor), Scale(logical_height, scale_factor),
+      resolved_placement.x, resolved_placement.y,
+      resolved_placement.width, resolved_placement.height,
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {

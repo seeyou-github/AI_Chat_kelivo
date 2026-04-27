@@ -33,6 +33,17 @@ void main() {
       );
     });
 
+    test('persists adjusted size for the next startup', () async {
+      SharedPreferences.setMockInitialValues({});
+
+      const manager = WindowSizeManager();
+      await manager.setSize(const Size(1500, 940));
+
+      final size = await manager.getInitialSize();
+
+      expect(size, const Size(1500, 940));
+    });
+
     test('centers the startup window inside the work area', () {
       final position = WindowSizeManager.centerPositionForWorkArea(
         workArea: const Rect.fromLTWH(100, 50, 1400, 900),
