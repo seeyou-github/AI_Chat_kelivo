@@ -1,21 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'window_size_manager.dart';
-import 'dart:async';
-import 'package:shared_preferences/shared_preferences.dart';
 
-/// Handles desktop window initialization and persistence (size/position/maximized).
+/// Handles desktop window initialization and size persistence.
 class DesktopWindowController with WindowListener {
   DesktopWindowController._();
   static final DesktopWindowController instance = DesktopWindowController._();
 
   final WindowSizeManager _sizeMgr = const WindowSizeManager();
   bool _attached = false;
-  // Debounce timers to avoid frequent disk writes during drag/resize
-  Timer? _moveDebounce;
+  // Debounce resize persistence to avoid frequent disk writes during drag.
   Timer? _resizeDebounce;
   static const _debounceDuration = Duration(milliseconds: 400);
 
@@ -31,6 +31,8 @@ class DesktopWindowController with WindowListener {
     }
 
     if (defaultTargetPlatform == TargetPlatform.windows) {
+      // Windows applies startup size and work-area centering natively before
+      // the first frame, avoiding an extra Dart-side reposition during launch.
       _attachListeners();
       return;
     }
@@ -42,8 +44,6 @@ class DesktopWindowController with WindowListener {
     // Windows custom title bar is handled in main (TitleBarStyle.hidden)
 
     final initialSizeFuture = _sizeMgr.getInitialSize(prefs: initialPrefs);
-    final savedPosFuture = _sizeMgr.getPosition(prefs: initialPrefs);
-    final wasMaxFuture = _sizeMgr.getWindowMaximized(prefs: initialPrefs);
     final initialSize = await initialSizeFuture;
     const minSize = Size(
       WindowSizeManager.minWindowWidth,
@@ -64,20 +64,17 @@ class DesktopWindowController with WindowListener {
       title: title,
     );
 
-    final savedPos = await savedPosFuture;
-    final wasMax = await wasMaxFuture;
-
     await windowManager.waitUntilReadyToShow(options, () async {
-      // Show first, then restore position to avoid macOS jump/flicker.
-      await windowManager.show();
-      await windowManager.focus();
-      // On macOS rely on native autosave. Do not set position from Dart.
-      final shouldRestorePos = savedPos != null && !isMac;
-      if (shouldRestorePos) {
+      if (!isMac) {
         try {
-          await windowManager.setPosition(savedPos);
+          final position = await _sizeMgr.getCenteredStartupPosition(
+            initialSize,
+          );
+          await windowManager.setPosition(position);
         } catch (_) {}
       }
+      await windowManager.show();
+      await windowManager.focus();
     });
   }
 
@@ -88,77 +85,45 @@ class DesktopWindowController with WindowListener {
   }
 
   @override
-  void onWindowResize() async {
+  void onWindowResize() {
     // Throttle saves while resizing to reduce jank
     _resizeDebounce?.cancel();
     _resizeDebounce = Timer(_debounceDuration, () async {
-      await _persistWindowBounds();
+      await _persistWindowSize();
     });
   }
 
   @override
-  void onWindowMove() async {
-    // Debounce position persistence during drag to avoid main-isolate IO on every move
-    _moveDebounce?.cancel();
-    _moveDebounce = Timer(_debounceDuration, () async {
-      await _persistWindowBounds();
-    });
-  }
-
-  @override
-  void onWindowMaximize() async {
-    try {
-      await _sizeMgr.setWindowMaximized(true);
-      // Mark position as origin placeholder to avoid stale restore when maximized.
-      await _sizeMgr.setPosition(const Offset(0, 0));
-    } catch (_) {}
+  void onWindowMove() {
+    // Startup is always centered, so move events are intentionally not persisted.
   }
 
   @override
   void onWindowUnmaximize() async {
     try {
-      await _sizeMgr.setWindowMaximized(false);
-      // Capture current position on restore from maximized.
-      final offset = await windowManager.getPosition();
-      await _sizeMgr.setPosition(offset);
-    } catch (_) {}
-  }
-
-  // Persist fullscreen transitions similarly to maximize/unmaximize to
-  // keep state consistent across platforms and avoid position jumps.
-  @override
-  void onWindowEnterFullScreen() async {
-    try {
-      await _sizeMgr.setWindowMaximized(true);
-      await _sizeMgr.setPosition(const Offset(0, 0));
+      await _persistWindowSize();
     } catch (_) {}
   }
 
   @override
   void onWindowLeaveFullScreen() async {
     try {
-      await _sizeMgr.setWindowMaximized(false);
-      final offset = await windowManager.getPosition();
-      await _sizeMgr.setPosition(offset);
+      await _persistWindowSize();
     } catch (_) {}
   }
 
   @override
   void onWindowClose() async {
-    _moveDebounce?.cancel();
     _resizeDebounce?.cancel();
-    await _persistWindowBounds();
+    await _persistWindowSize();
   }
 
-  Future<void> _persistWindowBounds() async {
+  Future<void> _persistWindowSize() async {
     try {
       final isMax = await windowManager.isMaximized();
-      await _sizeMgr.setWindowMaximized(isMax);
       if (isMax) return;
       final size = await windowManager.getSize();
-      final offset = await windowManager.getPosition();
       await _sizeMgr.setSize(size);
-      await _sizeMgr.setPosition(offset);
     } catch (_) {}
   }
 }

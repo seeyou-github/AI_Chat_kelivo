@@ -2,7 +2,7 @@ import Cocoa
 import FlutterMacOS
 
 class MainFlutterWindow: NSWindow {
-  // Use Cocoa autosave to persist and restore window frame precisely on macOS.
+  // Use Cocoa autosave for startup size; origin is recentered below.
   private let autosaveName = NSWindow.FrameAutosaveName("KelivoMainWindowFrame")
 
   // Minimum reasonable content size to ensure the window is visible and usable.
@@ -23,36 +23,24 @@ class MainFlutterWindow: NSWindow {
     return NSSize(width: w, height: h)
   }
 
-  // Returns true if a rect intersects any screen's visible frame meaningfully
-  private func isRectOnAnyScreen(_ rect: NSRect) -> Bool {
-    for screen in NSScreen.screens {
-      if rect.intersects(screen.visibleFrame) { return true }
-    }
-    return false
-  }
-
-  // Some macOS setups can persist frames that are off‑screen or zero‑sized.
-  // Normalize the frame so it's visible on the current main screen.
-  private func normalizeFrameIfNeeded() {
+  // Restore the saved size, but always place the startup window at the center
+  // of the current work area instead of reusing a stale saved position.
+  private func applyCenteredStartupFrame() {
     let frame = self.frame
-    let invalidOrigin = !frame.origin.x.isFinite || !frame.origin.y.isFinite
-    let tooSmall = frame.width < 100 || frame.height < 100
-    let offScreen = !isRectOnAnyScreen(frame)
-    if invalidOrigin || tooSmall || offScreen {
-      let targetScreen = NSScreen.main ?? NSScreen.screens.first
-      let targetSize = clampedSize(NSSize(width: max(frame.width, minContentSize.width),
-                                          height: max(frame.height, minContentSize.height)),
-                                   for: targetScreen)
-      let vf = targetScreen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-      let newOrigin = NSPoint(
-        x: vf.origin.x + (vf.size.width - targetSize.width) / 2,
-        y: vf.origin.y + (vf.size.height - targetSize.height) / 2
-      )
-      let newFrame = NSRect(origin: newOrigin, size: targetSize)
-      self.setFrame(newFrame, display: false)
-      // Persist the corrected frame immediately so subsequent launches are safe
-      self.saveFrame(usingName: autosaveName)
-    }
+    let targetScreen = NSScreen.main ?? NSScreen.screens.first
+    let safeSize = NSSize(width: frame.width.isFinite ? frame.width : minContentSize.width,
+                          height: frame.height.isFinite ? frame.height : minContentSize.height)
+    let targetSize = clampedSize(NSSize(width: max(safeSize.width, minContentSize.width),
+                                        height: max(safeSize.height, minContentSize.height)),
+                                 for: targetScreen)
+    let vf = targetScreen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+    let newOrigin = NSPoint(
+      x: vf.origin.x + (vf.size.width - targetSize.width) / 2,
+      y: vf.origin.y + (vf.size.height - targetSize.height) / 2
+    )
+    let newFrame = NSRect(origin: newOrigin, size: targetSize)
+    self.setFrame(newFrame, display: false)
+    self.saveFrame(usingName: autosaveName)
   }
   // Layout helper: re-position the traffic light buttons
   private func layoutTrafficLightButton(titlebarView: NSView, button: NSButton, offsetTop: CGFloat, offsetLeft: CGFloat) {
@@ -112,8 +100,7 @@ class MainFlutterWindow: NSWindow {
     // Now enable autosave and restore the last saved frame (post style configuration)
     _ = self.setFrameAutosaveName(autosaveName)
     _ = self.setFrameUsingName(autosaveName, force: false)
-    // Guard against saved frames that are off-screen or invalid sizes
-    normalizeFrameIfNeeded()
+    applyCenteredStartupFrame()
 
     // Place system traffic light buttons
     self.layoutTrafficLights()

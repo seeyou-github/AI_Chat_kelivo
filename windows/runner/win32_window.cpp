@@ -39,11 +39,8 @@ static HBRUSH g_startup_background_brush = nullptr;
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
 struct StartupWindowPlacement {
-  std::optional<int> x;
-  std::optional<int> y;
   std::optional<int> width;
   std::optional<int> height;
-  bool maximized = false;
 };
 
 bool GetSystemDarkModePreference() {
@@ -57,6 +54,13 @@ bool GetSystemDarkModePreference() {
 }
 
 std::optional<std::string> ReadPortablePreferencesJson() {
+  static bool loaded = false;
+  static std::optional<std::string> cached_content;
+  if (loaded) {
+    return cached_content;
+  }
+  loaded = true;
+
   wchar_t module_path[MAX_PATH];
   if (GetModuleFileName(nullptr, module_path, MAX_PATH) == 0) {
     return std::nullopt;
@@ -70,8 +74,9 @@ std::optional<std::string> ReadPortablePreferencesJson() {
     return std::nullopt;
   }
 
-  return std::string((std::istreambuf_iterator<char>(input)),
-                     std::istreambuf_iterator<char>());
+  cached_content = std::string((std::istreambuf_iterator<char>(input)),
+                               std::istreambuf_iterator<char>());
+  return cached_content;
 }
 
 std::optional<bool> GetConfiguredStartupDarkModePreference() {
@@ -112,27 +117,6 @@ std::optional<double> ExtractDoublePreference(const std::string& content,
   }
 }
 
-std::optional<bool> ExtractBoolPreference(const std::string& content,
-                                          const std::string& key) {
-  const std::regex bool_regex(
-      std::string("\"flutter\\\\.") + key + "\"\\s*:\\s*(true|false)");
-  std::smatch match;
-  if (!std::regex_search(content, match, bool_regex)) {
-    return std::nullopt;
-  }
-  return match[1].str() == "true";
-}
-
-std::optional<int> SanitizeWindowCoordinate(std::optional<double> value) {
-  if (!value.has_value() || !std::isfinite(*value)) {
-    return std::nullopt;
-  }
-  if (*value < -10000.0 || *value > 10000.0) {
-    return std::nullopt;
-  }
-  return static_cast<int>(std::lround(*value));
-}
-
 std::optional<int> SanitizeWindowDimension(std::optional<double> value) {
   if (!value.has_value() || !std::isfinite(*value)) {
     return std::nullopt;
@@ -150,28 +134,14 @@ StartupWindowPlacement GetConfiguredStartupWindowPlacement() {
     return placement;
   }
 
-  placement.x = SanitizeWindowCoordinate(
-      ExtractDoublePreference(*content, "window_pos_x_v1"));
-  placement.y = SanitizeWindowCoordinate(
-      ExtractDoublePreference(*content, "window_pos_y_v1"));
   placement.width = SanitizeWindowDimension(
       ExtractDoublePreference(*content, "window_width_v1"));
   placement.height = SanitizeWindowDimension(
       ExtractDoublePreference(*content, "window_height_v1"));
-  placement.maximized =
-      ExtractBoolPreference(*content, "window_maximized_v1").value_or(false);
   return placement;
 }
 
-POINT ResolveStartupOrigin(const StartupWindowPlacement& placement,
-                           int fallback_x,
-                           int fallback_y,
-                           int width,
-                           int height) {
-  if (placement.x.has_value() && placement.y.has_value()) {
-    return POINT{static_cast<LONG>(*placement.x), static_cast<LONG>(*placement.y)};
-  }
-
+POINT ResolveStartupOrigin(int fallback_x, int fallback_y, int width, int height) {
   POINT seed_point{static_cast<LONG>(fallback_x), static_cast<LONG>(fallback_y)};
   HMONITOR monitor = MonitorFromPoint(seed_point, MONITOR_DEFAULTTOPRIMARY);
   MONITORINFO monitor_info{};
@@ -314,18 +284,14 @@ bool Win32Window::Create(const std::wstring& title,
       WindowClassRegistrar::GetInstance()->GetWindowClass();
 
   const auto startup_placement = GetConfiguredStartupWindowPlacement();
-  const int logical_x =
-      startup_placement.x.value_or(static_cast<int>(origin.x));
-  const int logical_y =
-      startup_placement.y.value_or(static_cast<int>(origin.y));
   const int logical_width =
       startup_placement.width.value_or(static_cast<int>(size.width));
   const int logical_height =
       startup_placement.height.value_or(static_cast<int>(size.height));
-  start_maximized_ = startup_placement.maximized;
 
   const POINT resolved_origin = ResolveStartupOrigin(
-      startup_placement, logical_x, logical_y, logical_width, logical_height);
+      static_cast<int>(origin.x), static_cast<int>(origin.y),
+      logical_width, logical_height);
 
   const POINT target_point = resolved_origin;
   HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
@@ -348,8 +314,7 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_,
-                    start_maximized_ ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
+  return ShowWindow(window_handle_, SW_SHOWNORMAL);
 }
 
 // static

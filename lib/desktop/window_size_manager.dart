@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Manages desktop window size/position persistence and defaults.
+/// Manages desktop window size persistence and startup placement helpers.
 class WindowSizeManager {
   // Constraints
   static const double minWindowWidth = 960.0;
@@ -16,9 +17,6 @@ class WindowSizeManager {
   // Keys
   static const String _kWidth = 'window_width_v1';
   static const String _kHeight = 'window_height_v1';
-  static const String _kPosX = 'window_pos_x_v1';
-  static const String _kPosY = 'window_pos_y_v1';
-  static const String _kMaximized = 'window_maximized_v1';
 
   const WindowSizeManager();
 
@@ -26,6 +24,17 @@ class WindowSizeManager {
     final w = s.width.clamp(minWindowWidth, maxWindowWidth);
     final h = s.height.clamp(minWindowHeight, maxWindowHeight);
     return Size(w.toDouble(), h.toDouble());
+  }
+
+  @visibleForTesting
+  static Offset centerPositionForWorkArea({
+    required Rect workArea,
+    required Size windowSize,
+  }) {
+    return Offset(
+      workArea.left + (workArea.width - windowSize.width) / 2,
+      workArea.top + (workArea.height - windowSize.height) / 2,
+    );
   }
 
   Future<Size> getInitialSize({SharedPreferences? prefs}) async {
@@ -42,46 +51,13 @@ class WindowSizeManager {
     await prefs.setDouble(_kHeight, s.height);
   }
 
-  Future<Offset?> getPosition({SharedPreferences? prefs}) async {
-    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
-    final x = resolvedPrefs.getDouble(_kPosX);
-    final y = resolvedPrefs.getDouble(_kPosY);
-    if (x == null || y == null) return null;
-    // Simple sanity: avoid infinities
-    if (!x.isFinite || !y.isFinite) return null;
-
-    // Additional guard: if the stored coordinates are extremely far
-    // from the origin, treat them as invalid instead of restoring
-    // the window completely off-screen (which makes the app appear
-    // "unopenable" until the prefs are manually deleted).
-    const maxAbsCoord = 10000.0;
-    if (x < -maxAbsCoord ||
-        x > maxAbsCoord ||
-        y < -maxAbsCoord ||
-        y > maxAbsCoord) {
-      return null;
-    }
-
-    return Offset(x, y);
-  }
-
-  Future<void> setPosition(Offset offset) async {
-    final prefs = await SharedPreferences.getInstance();
-    final x = offset.dx;
-    final y = offset.dy;
-    if (x.isFinite && y.isFinite) {
-      await prefs.setDouble(_kPosX, x);
-      await prefs.setDouble(_kPosY, y);
-    }
-  }
-
-  Future<bool> getWindowMaximized({SharedPreferences? prefs}) async {
-    final resolvedPrefs = prefs ?? await SharedPreferences.getInstance();
-    return resolvedPrefs.getBool(_kMaximized) ?? false;
-  }
-
-  Future<void> setWindowMaximized(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_kMaximized, value);
+  Future<Offset> getCenteredStartupPosition(Size size) async {
+    final display = await screenRetriever.getPrimaryDisplay();
+    final visiblePosition = display.visiblePosition ?? Offset.zero;
+    final visibleSize = display.visibleSize ?? display.size;
+    return centerPositionForWorkArea(
+      workArea: visiblePosition & visibleSize,
+      windowSize: _clamp(size),
+    );
   }
 }
