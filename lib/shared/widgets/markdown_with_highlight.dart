@@ -71,6 +71,22 @@ double _markdownBaseFontSize(
       fallback;
 }
 
+double _markdownCodeFontSize(
+  BuildContext context, {
+  TextStyle? preferredStyle,
+  double fallback = 15.5,
+}) {
+  return math.max(
+    12.0,
+    _markdownBaseFontSize(
+          context,
+          preferredStyle: preferredStyle,
+          fallback: fallback,
+        ) -
+        1.0,
+  );
+}
+
 double _neutralizedChatScale(BuildContext context) {
   final media = MediaQuery.maybeOf(context);
   if (media == null) return 1.0;
@@ -646,7 +662,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final bool isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
         final csCtx = Theme.of(ctx).colorScheme;
         final bg = isDarkCtx ? Colors.white12 : const Color(0xFFF1F3F5);
-        final codeFontSize = _markdownBaseFontSize(ctx, preferredStyle: style);
+        final codeFontSize = _markdownCodeFontSize(
+          ctx,
+          preferredStyle: style,
+        );
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
@@ -1134,7 +1153,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = context.watch<SettingsProvider>();
-    final codeFontSize = _markdownBaseFontSize(context, fallback: 13.0);
+    final codeFontSize = _markdownCodeFontSize(context, fallback: 13.0);
     final controlFontSize = math.max(12.0, codeFontSize - 1.0);
     final neutralizedMedia = MediaQuery.of(
       context,
@@ -2346,10 +2365,16 @@ class AtxHeadingMd extends BlockMd {
         } catch (_) {}
       }
     }
-    final base = TextStyle(
-      fontSize: _markdownBaseFontSize(ctx, preferredStyle: cfg.style) +
-          (7 - level).toDouble(),
-    );
+    final bodySize = _markdownBaseFontSize(ctx, preferredStyle: cfg.style);
+    final increment = switch (level) {
+      1 => 4.0,
+      2 => 3.0,
+      3 => 2.0,
+      4 => 1.5,
+      5 => 1.0,
+      _ => 0.5,
+    };
+    final base = TextStyle(fontSize: bodySize + increment);
     final weight = switch (level) {
       1 => FontWeight.w700,
       2 => FontWeight.w600,

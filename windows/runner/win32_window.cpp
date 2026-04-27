@@ -1,7 +1,11 @@
 #include "win32_window.h"
 
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <dwmapi.h>
 #include <flutter_windows.h>
+#include <regex>
 
 #include "resource.h"
 
@@ -28,8 +32,61 @@ constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme"
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
+static HBRUSH g_startup_background_brush = nullptr;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
+
+bool IsDarkThemeConfiguredForStartup() {
+  wchar_t module_path[MAX_PATH];
+  if (GetModuleFileName(nullptr, module_path, MAX_PATH) == 0) {
+    return false;
+  }
+
+  std::filesystem::path exe_path(module_path);
+  const auto config_path =
+      exe_path.parent_path() / L"AppData" / L"Config" / L"shared_preferences.json";
+  std::ifstream input(config_path, std::ios::binary);
+  if (!input.is_open()) {
+    return false;
+  }
+
+  std::string content((std::istreambuf_iterator<char>(input)),
+                      std::istreambuf_iterator<char>());
+  std::smatch match;
+  const std::regex theme_regex(
+      R"("flutter\.theme_mode_v1"\s*:\s*"(dark|light|system)")");
+  if (!std::regex_search(content, match, theme_regex)) {
+    return false;
+  }
+
+  const std::string theme_mode = match[1].str();
+  if (theme_mode == "dark") {
+    return true;
+  }
+  if (theme_mode == "light") {
+    return false;
+  }
+
+  DWORD light_mode = 1;
+  DWORD light_mode_size = sizeof(light_mode);
+  LSTATUS result = RegGetValue(HKEY_CURRENT_USER, kGetPreferredBrightnessRegKey,
+                               kGetPreferredBrightnessRegValue,
+                               RRF_RT_REG_DWORD, nullptr, &light_mode,
+                               &light_mode_size);
+  return result == ERROR_SUCCESS ? light_mode == 0 : false;
+}
+
+void EnsureStartupBackgroundBrush() {
+  if (g_startup_background_brush != nullptr) {
+    return;
+  }
+
+  const COLORREF dark_startup_color = RGB(18, 18, 19);
+  const COLORREF light_startup_color = RGB(247, 247, 247);
+  g_startup_background_brush = CreateSolidBrush(
+      IsDarkThemeConfiguredForStartup() ? dark_startup_color
+                                        : light_startup_color);
+}
 
 // Scale helper to convert logical scaler values to physical using passed in
 // scale factor
@@ -88,6 +145,7 @@ WindowClassRegistrar* WindowClassRegistrar::instance_ = nullptr;
 
 const wchar_t* WindowClassRegistrar::GetWindowClass() {
   if (!class_registered_) {
+    EnsureStartupBackgroundBrush();
     WNDCLASS window_class{};
     window_class.hCursor = LoadCursor(nullptr, IDC_ARROW);
     window_class.lpszClassName = kWindowClassName;
@@ -97,7 +155,7 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
     window_class.hInstance = GetModuleHandle(nullptr);
     window_class.hIcon =
         LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APP_ICON));
-    window_class.hbrBackground = 0;
+    window_class.hbrBackground = g_startup_background_brush;
     window_class.lpszMenuName = nullptr;
     window_class.lpfnWndProc = Win32Window::WndProc;
     RegisterClass(&window_class);
@@ -108,6 +166,10 @@ const wchar_t* WindowClassRegistrar::GetWindowClass() {
 
 void WindowClassRegistrar::UnregisterWindowClass() {
   UnregisterClass(kWindowClassName, nullptr);
+  if (g_startup_background_brush != nullptr) {
+    DeleteObject(g_startup_background_brush);
+    g_startup_background_brush = nullptr;
+  }
   class_registered_ = false;
 }
 
@@ -226,12 +288,16 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
 
     case WM_ERASEBKGND: {
-      if (background_brush_ == nullptr) {
+      HBRUSH brush = background_brush_;
+      if (brush == nullptr) {
+        brush = g_startup_background_brush;
+      }
+      if (brush == nullptr) {
         return DefWindowProc(window_handle_, message, wparam, lparam);
       }
       RECT rect;
       GetClientRect(hwnd, &rect);
-      FillRect(reinterpret_cast<HDC>(wparam), &rect, background_brush_);
+      FillRect(reinterpret_cast<HDC>(wparam), &rect, brush);
       return 0;
     }
 

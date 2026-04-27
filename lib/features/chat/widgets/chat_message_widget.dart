@@ -1204,7 +1204,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             child: Container(
               key: _userBubbleKey,
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+                maxWidth: MediaQuery.sizeOf(context).width * 0.9,
               ),
               child: _buildBubbleContainer(
                 context: context,
@@ -1219,7 +1219,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               defaultTargetPlatform == TargetPlatform.macOS ||
                               defaultTargetPlatform == TargetPlatform.windows ||
                               defaultTargetPlatform == TargetPlatform.linux;
-                          final double baseUser = isDesktop ? 14.0 : 15.5;
+                          final double baseUser = isDesktop ? 13.5 : 15.0;
                           final conversationTextColor =
                               settings.resolveConversationTextColor(
                                 Theme.of(context).brightness,
@@ -1453,7 +1453,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               alignment: Alignment.centerRight,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * 0.75,
+                  maxWidth: MediaQuery.sizeOf(context).width * 0.9,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -1738,7 +1738,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux;
-    final double baseAssistant = isDesktop ? 14.0 : 15.7;
+    final double baseAssistant = isDesktop ? 13.5 : 15.0;
     final conversationTextColor = settings.resolveConversationTextColor(
       Theme.of(context).brightness,
       fallback: cs.onSurface,
