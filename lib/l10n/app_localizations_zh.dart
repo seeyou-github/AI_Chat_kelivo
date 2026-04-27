@@ -3267,6 +3267,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageChatBaseFontSizeTitle => '普通字体大小';
 
   @override
+  String get displaySettingsPageMarkdownBaseFontSizeTitle => 'Markdown 正文字体大小';
+
+  @override
+  String get displaySettingsPageMarkdownHeadingFontSizeTitle =>
+      'Markdown 标题字体大小';
+
+  @override
+  String get displaySettingsPageMarkdownCodeFontSizeTitle => 'Markdown 代码块字体大小';
+
+  @override
+  String get displaySettingsPageMarkdownCodeLineHeightTitle => '代码块行高';
+
+  @override
   String get displaySettingsPageAutoScrollEnableTitle => '自动回到底部';
 
   @override
@@ -7589,6 +7602,19 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageChatBaseFontSizeTitle => '普通字体大小';
 
   @override
+  String get displaySettingsPageMarkdownBaseFontSizeTitle => 'Markdown 正文字体大小';
+
+  @override
+  String get displaySettingsPageMarkdownHeadingFontSizeTitle =>
+      'Markdown 标题字体大小';
+
+  @override
+  String get displaySettingsPageMarkdownCodeFontSizeTitle => 'Markdown 代码块字体大小';
+
+  @override
+  String get displaySettingsPageMarkdownCodeLineHeightTitle => '代码块行高';
+
+  @override
   String get displaySettingsPageAutoScrollEnableTitle => '自动回到底部';
 
   @override
@@ -11907,6 +11933,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageChatBaseFontSizeTitle => '普通字體大小';
+
+  @override
+  String get displaySettingsPageMarkdownBaseFontSizeTitle => 'Markdown 正文字體大小';
+
+  @override
+  String get displaySettingsPageMarkdownHeadingFontSizeTitle =>
+      'Markdown 標題字體大小';
+
+  @override
+  String get displaySettingsPageMarkdownCodeFontSizeTitle => 'Markdown 程式碼區塊字體大小';
+
+  @override
+  String get displaySettingsPageMarkdownCodeLineHeightTitle => '程式碼區塊行高';
 
   @override
   String get displaySettingsPageAutoScrollEnableTitle => '自動回到底部';

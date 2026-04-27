@@ -1,5 +1,6 @@
 #include "win32_window.h"
 
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -37,6 +38,14 @@ static HBRUSH g_startup_background_brush = nullptr;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
+struct StartupWindowPlacement {
+  std::optional<int> x;
+  std::optional<int> y;
+  std::optional<int> width;
+  std::optional<int> height;
+  bool maximized = false;
+};
+
 bool GetSystemDarkModePreference() {
   DWORD light_mode = 1;
   DWORD light_mode_size = sizeof(light_mode);
@@ -47,7 +56,7 @@ bool GetSystemDarkModePreference() {
   return result == ERROR_SUCCESS ? light_mode == 0 : false;
 }
 
-std::optional<bool> GetConfiguredStartupDarkModePreference() {
+std::optional<std::string> ReadPortablePreferencesJson() {
   wchar_t module_path[MAX_PATH];
   if (GetModuleFileName(nullptr, module_path, MAX_PATH) == 0) {
     return std::nullopt;
@@ -61,12 +70,20 @@ std::optional<bool> GetConfiguredStartupDarkModePreference() {
     return std::nullopt;
   }
 
-  std::string content((std::istreambuf_iterator<char>(input)),
-                      std::istreambuf_iterator<char>());
+  return std::string((std::istreambuf_iterator<char>(input)),
+                     std::istreambuf_iterator<char>());
+}
+
+std::optional<bool> GetConfiguredStartupDarkModePreference() {
+  const auto content = ReadPortablePreferencesJson();
+  if (!content.has_value()) {
+    return std::nullopt;
+  }
+
   std::smatch match;
   const std::regex theme_regex(
       "\"flutter\\\\.theme_mode_v1\"\\s*:\\s*\"(dark|light|system)\"");
-  if (!std::regex_search(content, match, theme_regex)) {
+  if (!std::regex_search(*content, match, theme_regex)) {
     return std::nullopt;
   }
 
@@ -78,6 +95,72 @@ std::optional<bool> GetConfiguredStartupDarkModePreference() {
     return false;
   }
   return std::nullopt;
+}
+
+std::optional<double> ExtractDoublePreference(const std::string& content,
+                                              const std::string& key) {
+  const std::regex number_regex(
+      std::string("\"flutter\\\\.") + key + "\"\\s*:\\s*(-?\\d+(?:\\.\\d+)?)");
+  std::smatch match;
+  if (!std::regex_search(content, match, number_regex)) {
+    return std::nullopt;
+  }
+  try {
+    return std::stod(match[1].str());
+  } catch (...) {
+    return std::nullopt;
+  }
+}
+
+std::optional<bool> ExtractBoolPreference(const std::string& content,
+                                          const std::string& key) {
+  const std::regex bool_regex(
+      std::string("\"flutter\\\\.") + key + "\"\\s*:\\s*(true|false)");
+  std::smatch match;
+  if (!std::regex_search(content, match, bool_regex)) {
+    return std::nullopt;
+  }
+  return match[1].str() == "true";
+}
+
+std::optional<int> SanitizeWindowCoordinate(std::optional<double> value) {
+  if (!value.has_value() || !std::isfinite(*value)) {
+    return std::nullopt;
+  }
+  if (*value < -10000.0 || *value > 10000.0) {
+    return std::nullopt;
+  }
+  return static_cast<int>(std::lround(*value));
+}
+
+std::optional<int> SanitizeWindowDimension(std::optional<double> value) {
+  if (!value.has_value() || !std::isfinite(*value)) {
+    return std::nullopt;
+  }
+  int rounded = static_cast<int>(std::lround(*value));
+  if (rounded < 960) rounded = 960;
+  if (rounded > 8192) rounded = 8192;
+  return rounded;
+}
+
+StartupWindowPlacement GetConfiguredStartupWindowPlacement() {
+  StartupWindowPlacement placement;
+  const auto content = ReadPortablePreferencesJson();
+  if (!content.has_value()) {
+    return placement;
+  }
+
+  placement.x = SanitizeWindowCoordinate(
+      ExtractDoublePreference(*content, "window_pos_x_v1"));
+  placement.y = SanitizeWindowCoordinate(
+      ExtractDoublePreference(*content, "window_pos_y_v1"));
+  placement.width = SanitizeWindowDimension(
+      ExtractDoublePreference(*content, "window_width_v1"));
+  placement.height = SanitizeWindowDimension(
+      ExtractDoublePreference(*content, "window_height_v1"));
+  placement.maximized =
+      ExtractBoolPreference(*content, "window_maximized_v1").value_or(false);
+  return placement;
 }
 
 bool ResolvePreferredDarkMode() {
@@ -205,16 +288,27 @@ bool Win32Window::Create(const std::wstring& title,
   const wchar_t* window_class =
       WindowClassRegistrar::GetInstance()->GetWindowClass();
 
-  const POINT target_point = {static_cast<LONG>(origin.x),
-                              static_cast<LONG>(origin.y)};
+  const auto startup_placement = GetConfiguredStartupWindowPlacement();
+  const int logical_x =
+      startup_placement.x.value_or(static_cast<int>(origin.x));
+  const int logical_y =
+      startup_placement.y.value_or(static_cast<int>(origin.y));
+  const int logical_width =
+      startup_placement.width.value_or(static_cast<int>(size.width));
+  const int logical_height =
+      startup_placement.height.value_or(static_cast<int>(size.height));
+  start_maximized_ = startup_placement.maximized;
+
+  const POINT target_point = {static_cast<LONG>(logical_x),
+                              static_cast<LONG>(logical_y)};
   HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
   HWND window = CreateWindow(
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+      Scale(logical_x, scale_factor), Scale(logical_y, scale_factor),
+      Scale(logical_width, scale_factor), Scale(logical_height, scale_factor),
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {
@@ -227,7 +321,8 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  return ShowWindow(window_handle_,
+                    start_maximized_ ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
 }
 
 // static

@@ -1220,6 +1220,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               defaultTargetPlatform == TargetPlatform.windows ||
                               defaultTargetPlatform == TargetPlatform.linux;
                           final double baseUser = settings.chatBaseFontSize;
+                          final double markdownUser =
+                              settings.markdownBaseFontSize;
                           final conversationTextColor =
                               settings.resolveConversationTextColor(
                                 Theme.of(context).brightness,
@@ -1230,14 +1232,14 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                           if (settings.enableUserMarkdown) {
                             content = DefaultTextStyle.merge(
                               style: TextStyle(
-                                fontSize: baseUser,
+                                fontSize: markdownUser,
                                 height: 1.45,
                                 color: conversationTextColor,
                               ),
                               child: MarkdownWithCodeHighlight(
                                 text: visualText,
                                 baseStyle: TextStyle(
-                                  fontSize: baseUser,
+                                  fontSize: markdownUser,
                                   height: 1.45,
                                   color: conversationTextColor,
                                 ),
@@ -1735,6 +1737,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   ) {
     final cs = Theme.of(context).colorScheme;
     final double baseAssistant = settings.chatBaseFontSize;
+    final double markdownAssistant = settings.markdownBaseFontSize;
     final conversationTextColor = settings.resolveConversationTextColor(
       Theme.of(context).brightness,
       fallback: cs.onSurface,
@@ -1746,7 +1749,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
         text: visualContent,
         onCitationTap: (id) => _handleCitationTap(id),
         baseStyle: TextStyle(
-          fontSize: baseAssistant,
+          fontSize: markdownAssistant,
           height: 1.5,
           color: conversationTextColor,
         ),
@@ -2262,6 +2265,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                   builder: (context) {
                                     final double baseTranslation =
                                         settings.chatBaseFontSize;
+                                    final double markdownTranslation =
+                                        settings.markdownBaseFontSize;
                                     final conversationTextColor = settings
                                         .resolveConversationTextColor(
                                           Theme.of(context).brightness,
@@ -2278,7 +2283,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                             onCitationTap: (id) =>
                                                 _handleCitationTap(id),
                                             baseStyle: TextStyle(
-                                              fontSize: baseTranslation,
+                                              fontSize: markdownTranslation,
                                               height: 1.4,
                                               color: conversationTextColor,
                                             ),

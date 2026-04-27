@@ -31,6 +31,26 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         .displaySettingsPageChatBaseFontSizeTitle;
   }
 
+  String _markdownBaseFontSizeLabel(BuildContext context) {
+    return AppLocalizations.of(context)!
+        .displaySettingsPageMarkdownBaseFontSizeTitle;
+  }
+
+  String _markdownHeadingFontSizeLabel(BuildContext context) {
+    return AppLocalizations.of(context)!
+        .displaySettingsPageMarkdownHeadingFontSizeTitle;
+  }
+
+  String _markdownCodeFontSizeLabel(BuildContext context) {
+    return AppLocalizations.of(context)!
+        .displaySettingsPageMarkdownCodeFontSizeTitle;
+  }
+
+  String _markdownCodeLineHeightLabel(BuildContext context) {
+    return AppLocalizations.of(context)!
+        .displaySettingsPageMarkdownCodeLineHeightTitle;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -119,7 +139,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
               _iosDivider(context),
               _iosNavRow(
                 context,
-                icon: Lucide.TextInitial,
+                icon: Lucide.Type,
                 label: l10n.displaySettingsPageRenderingSettingsTitle,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
@@ -323,6 +343,68 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   );
                 },
                 onTap: () => _showChatBaseFontSizeSheet(context),
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.Type,
+                label: _markdownBaseFontSizeLabel(context),
+                detailBuilder: (ctx) {
+                  final size =
+                      ctx.watch<SettingsProvider>().markdownBaseFontSize;
+                  return Text(
+                    '${size.toStringAsFixed(0)}pt',
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  );
+                },
+                onTap: () => _showMarkdownBaseFontSizeSheet(context),
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.Type,
+                label: _markdownHeadingFontSizeLabel(context),
+                detailText: 'H1-H6',
+                onTap: () => _showMarkdownHeadingFontSizeSheet(context),
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.Code,
+                label: _markdownCodeFontSizeLabel(context),
+                detailBuilder: (ctx) {
+                  final size =
+                      ctx.watch<SettingsProvider>().markdownCodeFontSize;
+                  return Text(
+                    '${size.toStringAsFixed(0)}pt',
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  );
+                },
+                onTap: () => _showMarkdownCodeFontSizeSheet(context),
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.TextSelect,
+                label: _markdownCodeLineHeightLabel(context),
+                detailBuilder: (ctx) {
+                  final value =
+                      ctx.watch<SettingsProvider>().markdownCodeLineHeight;
+                  return Text(
+                    value.toStringAsFixed(2),
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  );
+                },
+                onTap: () => _showMarkdownCodeLineHeightSheet(context),
               ),
               _iosDivider(context),
               _iosNavRow(
@@ -806,104 +888,282 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   }
 
   Future<void> _showChatBaseFontSizeSheet(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+    await _showSliderSheet(
+      context: context,
+      title: _chatBaseFontSizeLabel(context),
+      value: settings.chatBaseFontSize,
+      min: 10,
+      max: 50,
+      divisions: 40,
+      valueTextBuilder: (value) => '${value.toStringAsFixed(0)}pt',
+      onChanged: settings.setChatBaseFontSize,
+      previewBuilder: (ctx, value) => Text(
+        l10n.displaySettingsPageChatFontSampleText,
+        style: TextStyle(fontSize: value),
+      ),
+    );
+  }
+
+  Future<void> _showMarkdownBaseFontSizeSheet(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+    await _showSliderSheet(
+      context: context,
+      title: _markdownBaseFontSizeLabel(context),
+      value: settings.markdownBaseFontSize,
+      min: 10,
+      max: 50,
+      divisions: 40,
+      valueTextBuilder: (value) => '${value.toStringAsFixed(0)}pt',
+      onChanged: settings.setMarkdownBaseFontSize,
+      previewBuilder: (ctx, value) => Text(
+        l10n.displaySettingsPageChatFontSampleText,
+        style: TextStyle(fontSize: value, height: 1.55),
+      ),
+    );
+  }
+
+  Future<void> _showMarkdownCodeFontSizeSheet(BuildContext context) async {
+    final settings = context.read<SettingsProvider>();
+    await _showSliderSheet(
+      context: context,
+      title: _markdownCodeFontSizeLabel(context),
+      value: settings.markdownCodeFontSize,
+      min: 10,
+      max: 50,
+      divisions: 40,
+      valueTextBuilder: (value) => '${value.toStringAsFixed(0)}pt',
+      onChanged: settings.setMarkdownCodeFontSize,
+      previewBuilder: (ctx, value) => Text(
+        'final answer = 42;\nprint(answer);',
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: value,
+          height: settings.markdownCodeLineHeight,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMarkdownCodeLineHeightSheet(BuildContext context) async {
+    final settings = context.read<SettingsProvider>();
+    await _showSliderSheet(
+      context: context,
+      title: _markdownCodeLineHeightLabel(context),
+      value: settings.markdownCodeLineHeight,
+      min: 1.0,
+      max: 2.5,
+      divisions: 30,
+      valueTextBuilder: (value) => value.toStringAsFixed(2),
+      onChanged: settings.setMarkdownCodeLineHeight,
+      previewBuilder: (ctx, value) => Text(
+        'final answer = 42;\nprint(answer);',
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: settings.markdownCodeFontSize,
+          height: value,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMarkdownHeadingFontSizeSheet(BuildContext context) async {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController(
-      text: context.read<SettingsProvider>().chatBaseFontSize.toStringAsFixed(1),
-    );
+    final settings = context.read<SettingsProvider>();
+    final values = <int, double>{
+      1: settings.markdownHeading1FontSize,
+      2: settings.markdownHeading2FontSize,
+      3: settings.markdownHeading3FontSize,
+      4: settings.markdownHeading4FontSize,
+      5: settings.markdownHeading5FontSize,
+      6: settings.markdownHeading6FontSize,
+    };
     await showModalBottomSheet(
       context: context,
       backgroundColor: cs.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      isScrollControlled: true,
+      isScrollControlled: false,
       builder: (ctx) {
         return SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              18 + MediaQuery.of(ctx).viewInsets.bottom,
-            ),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
             child: StatefulBuilder(
               builder: (context, setModalState) {
-                final settings = context.watch<SettingsProvider>();
-                final value = settings.chatBaseFontSize;
+                Widget sliderFor(int level) {
+                  final value = values[level]!;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'H$level',
+                            style: TextStyle(
+                              color: cs.onSurface,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            '${value.toStringAsFixed(0)}pt',
+                            style: TextStyle(
+                              color: cs.onSurface.withValues(alpha: 0.7),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Slider(
+                        value: value,
+                        min: 10,
+                        max: 50,
+                        divisions: 40,
+                        label: value.toStringAsFixed(0),
+                        onChanged: (next) {
+                          setModalState(() => values[level] = next);
+                          settings.setMarkdownHeadingFontSize(level, next);
+                        },
+                      ),
+                    ],
+                  );
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _markdownHeadingFontSizeLabel(context),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: cs.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      for (int level = 1; level <= 6; level++) ...[
+                        sliderFor(level),
+                        if (level < 6) const SizedBox(height: 2),
+                      ],
+                      const SizedBox(height: 10),
+                      _previewBox(
+                        context,
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (int level = 1; level <= 6; level++)
+                              Text(
+                                'H$level ${l10n.displaySettingsPageChatFontSampleText}',
+                                style: TextStyle(
+                                  fontSize: values[level],
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.25,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _previewBox(BuildContext context, Widget child) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white12
+            : const Color(0xFFF2F3F5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: child,
+    );
+  }
+
+  Future<void> _showSliderSheet({
+    required BuildContext context,
+    required String title,
+    required double value,
+    required double min,
+    required double max,
+    required int divisions,
+    required String Function(double value) valueTextBuilder,
+    required Future<void> Function(double value) onChanged,
+    Widget Function(BuildContext context, double value)? previewBuilder,
+  }) async {
+    final cs = Theme.of(context).colorScheme;
+    double current = value;
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: false,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _chatBaseFontSizeLabel(context),
+                      title,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: cs.onSurface,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [
-                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                      ],
-                      decoration: InputDecoration(
-                        isDense: true,
-                        suffixText: 'pt',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onSubmitted: (text) async {
-                        final n = double.tryParse(text.trim());
-                        if (n == null) return;
-                        final clamped = n.clamp(10.0, 32.0).toDouble();
-                        await context.read<SettingsProvider>().setChatBaseFontSize(
-                          clamped,
-                        );
-                        controller.text = clamped.toStringAsFixed(1);
-                        setModalState(() {});
-                      },
-                    ),
                     const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.white12
-                            : const Color(0xFFF2F3F5),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        l10n.displaySettingsPageChatFontSampleText,
-                        style: TextStyle(fontSize: value),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Slider(
+                            value: current.clamp(min, max).toDouble(),
+                            min: min,
+                            max: max,
+                            divisions: divisions,
+                            label: valueTextBuilder(current),
+                            onChanged: (next) {
+                              setModalState(() => current = next);
+                              onChanged(next);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          valueTextBuilder(current),
+                          style: TextStyle(
+                            color: cs.onSurface,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () async {
-                          final n = double.tryParse(controller.text.trim());
-                          if (n != null) {
-                            await context
-                                .read<SettingsProvider>()
-                                .setChatBaseFontSize(
-                                  n.clamp(10.0, 32.0).toDouble(),
-                                );
-                          }
-                          if (context.mounted) Navigator.of(context).pop();
-                        },
-                        child: Text(MaterialLocalizations.of(context).okButtonLabel),
-                      ),
-                    ),
+                    if (previewBuilder != null) ...[
+                      const SizedBox(height: 8),
+                      _previewBox(context, previewBuilder(context, current)),
+                    ],
                   ],
                 );
               },
@@ -912,7 +1172,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         );
       },
     );
-    controller.dispose();
   }
 
   Future<void> _showAutoScrollIdleSheet(BuildContext context) async {

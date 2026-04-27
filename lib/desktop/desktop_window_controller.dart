@@ -5,7 +5,6 @@ import 'package:window_manager/window_manager.dart';
 
 import 'window_size_manager.dart';
 import 'dart:async';
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Handles desktop window initialization and persistence (size/position/maximized).
@@ -28,6 +27,11 @@ class DesktopWindowController with WindowListener {
     if (!(defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.macOS ||
         defaultTargetPlatform == TargetPlatform.linux)) {
+      return;
+    }
+
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      _attachListeners();
       return;
     }
 
@@ -63,36 +67,18 @@ class DesktopWindowController with WindowListener {
     final savedPos = await savedPosFuture;
     final wasMax = await wasMaxFuture;
 
-    if (defaultTargetPlatform == TargetPlatform.windows) {
-      doWhenWindowReady(() async {
-        appWindow.minSize = options.minimumSize;
-        appWindow.maxSize = options.maximumSize;
-        appWindow.size = initialSize;
-
-        if (savedPos != null) {
-          appWindow.position = savedPos;
-        }
-
-        /// on Windows we maximize the window if it was previously closed
-        /// from a maximized state.
-        if (wasMax) {
-          appWindow.maximize();
-        }
-      });
-    } else {
-      await windowManager.waitUntilReadyToShow(options, () async {
-        // Show first, then restore position to avoid macOS jump/flicker.
-        await windowManager.show();
-        await windowManager.focus();
-        // On macOS rely on native autosave. Do not set position from Dart.
-        final shouldRestorePos = savedPos != null && !isMac;
-        if (shouldRestorePos) {
-          try {
-            await windowManager.setPosition(savedPos);
-          } catch (_) {}
-        }
-      });
-    }
+    await windowManager.waitUntilReadyToShow(options, () async {
+      // Show first, then restore position to avoid macOS jump/flicker.
+      await windowManager.show();
+      await windowManager.focus();
+      // On macOS rely on native autosave. Do not set position from Dart.
+      final shouldRestorePos = savedPos != null && !isMac;
+      if (shouldRestorePos) {
+        try {
+          await windowManager.setPosition(savedPos);
+        } catch (_) {}
+      }
+    });
   }
 
   void _attachListeners() {

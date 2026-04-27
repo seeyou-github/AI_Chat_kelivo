@@ -30,6 +30,25 @@ enum DesktopSendShortcut { enter, ctrlEnter }
 enum _MigrationResult { noChange, applied, failed }
 
 class SettingsProvider extends ChangeNotifier {
+  static const double _minDisplayFontSize = 10.0;
+  static const double _maxDisplayFontSize = 50.0;
+  static const double _defaultChatBaseFontSize = 15.0;
+  static const double _defaultMarkdownBaseFontSize = 15.0;
+  static const double _defaultMarkdownCodeFontSize = 13.0;
+  static const double _defaultMarkdownCodeLineHeight = 1.35;
+  static const double _defaultMarkdownH1FontSize = 17.0;
+  static const double _defaultMarkdownH2FontSize = 16.0;
+  static const double _defaultMarkdownH3FontSize = 15.0;
+  static const double _defaultMarkdownH4FontSize = 14.0;
+  static const double _defaultMarkdownH5FontSize = 13.0;
+  static const double _defaultMarkdownH6FontSize = 12.0;
+
+  static double _clampDisplayFontSize(num value) =>
+      value.clamp(_minDisplayFontSize, _maxDisplayFontSize).toDouble();
+
+  static double _clampMarkdownCodeLineHeight(num value) =>
+      value.clamp(1.0, 2.5).toDouble();
+
   static const String _providersOrderKey = 'providers_order_v1';
   static const String _providerGroupsKey =
       'provider_groups_v1'; // [{id,name,createdAt}]
@@ -143,6 +162,24 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayChatFontScaleKey = 'display_chat_font_scale_v1';
   static const String _displayChatBaseFontSizeKey =
       'display_chat_base_font_size_v1';
+  static const String _displayMarkdownBaseFontSizeKey =
+      'display_markdown_base_font_size_v1';
+  static const String _displayMarkdownCodeFontSizeKey =
+      'display_markdown_code_font_size_v1';
+  static const String _displayMarkdownCodeLineHeightKey =
+      'display_markdown_code_line_height_v1';
+  static const String _displayMarkdownHeadingH1FontSizeKey =
+      'display_markdown_heading_h1_font_size_v1';
+  static const String _displayMarkdownHeadingH2FontSizeKey =
+      'display_markdown_heading_h2_font_size_v1';
+  static const String _displayMarkdownHeadingH3FontSizeKey =
+      'display_markdown_heading_h3_font_size_v1';
+  static const String _displayMarkdownHeadingH4FontSizeKey =
+      'display_markdown_heading_h4_font_size_v1';
+  static const String _displayMarkdownHeadingH5FontSizeKey =
+      'display_markdown_heading_h5_font_size_v1';
+  static const String _displayMarkdownHeadingH6FontSizeKey =
+      'display_markdown_heading_h6_font_size_v1';
   static const String _displayConversationTextLightColorKey =
       'display_conversation_text_light_color_v1';
   static const String _displayConversationTextDarkColorKey =
@@ -440,10 +477,46 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _usePureBackground = pureBgPref;
     }
-    _chatBaseFontSize =
-        (prefs.getDouble(_displayChatBaseFontSizeKey) ?? 15.0)
-            .clamp(10.0, 32.0)
-            .toDouble();
+    _chatBaseFontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayChatBaseFontSizeKey) ??
+          _defaultChatBaseFontSize,
+    );
+    _markdownBaseFontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownBaseFontSizeKey) ??
+          _defaultMarkdownBaseFontSize,
+    );
+    _markdownCodeFontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownCodeFontSizeKey) ??
+          _defaultMarkdownCodeFontSize,
+    );
+    _markdownCodeLineHeight = _clampMarkdownCodeLineHeight(
+      prefs.getDouble(_displayMarkdownCodeLineHeightKey) ??
+          _defaultMarkdownCodeLineHeight,
+    );
+    _markdownHeading1FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH1FontSizeKey) ??
+          _defaultMarkdownH1FontSize,
+    );
+    _markdownHeading2FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH2FontSizeKey) ??
+          _defaultMarkdownH2FontSize,
+    );
+    _markdownHeading3FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH3FontSizeKey) ??
+          _defaultMarkdownH3FontSize,
+    );
+    _markdownHeading4FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH4FontSizeKey) ??
+          _defaultMarkdownH4FontSize,
+    );
+    _markdownHeading5FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH5FontSizeKey) ??
+          _defaultMarkdownH5FontSize,
+    );
+    _markdownHeading6FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH6FontSizeKey) ??
+          _defaultMarkdownH6FontSize,
+    );
   }
 
   Future<_MigrationResult> _migrateEmbeddingModelOverrides(
@@ -860,10 +933,46 @@ class SettingsProvider extends ChangeNotifier {
         _desktopSendShortcut = DesktopSendShortcut.enter;
     }
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
-    _chatBaseFontSize =
-        (prefs.getDouble(_displayChatBaseFontSizeKey) ?? 15.0)
-            .clamp(10.0, 32.0)
-            .toDouble();
+    _chatBaseFontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayChatBaseFontSizeKey) ??
+          _defaultChatBaseFontSize,
+    );
+    _markdownBaseFontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownBaseFontSizeKey) ??
+          _defaultMarkdownBaseFontSize,
+    );
+    _markdownCodeFontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownCodeFontSizeKey) ??
+          _defaultMarkdownCodeFontSize,
+    );
+    _markdownCodeLineHeight = _clampMarkdownCodeLineHeight(
+      prefs.getDouble(_displayMarkdownCodeLineHeightKey) ??
+          _defaultMarkdownCodeLineHeight,
+    );
+    _markdownHeading1FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH1FontSizeKey) ??
+          _defaultMarkdownH1FontSize,
+    );
+    _markdownHeading2FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH2FontSizeKey) ??
+          _defaultMarkdownH2FontSize,
+    );
+    _markdownHeading3FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH3FontSizeKey) ??
+          _defaultMarkdownH3FontSize,
+    );
+    _markdownHeading4FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH4FontSizeKey) ??
+          _defaultMarkdownH4FontSize,
+    );
+    _markdownHeading5FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH5FontSizeKey) ??
+          _defaultMarkdownH5FontSize,
+    );
+    _markdownHeading6FontSize = _clampDisplayFontSize(
+      prefs.getDouble(_displayMarkdownHeadingH6FontSizeKey) ??
+          _defaultMarkdownH6FontSize,
+    );
     _conversationTextLightColorValue = prefs.getInt(
       _displayConversationTextLightColorKey,
     );
@@ -2961,8 +3070,26 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   // Display: chat font scale (0.5 - 1.5, default 1.0)
   double _chatFontScale = 1.0;
   double get chatFontScale => _chatFontScale;
-  double _chatBaseFontSize = 15.0;
+  double _chatBaseFontSize = _defaultChatBaseFontSize;
   double get chatBaseFontSize => _chatBaseFontSize;
+  double _markdownBaseFontSize = _defaultMarkdownBaseFontSize;
+  double get markdownBaseFontSize => _markdownBaseFontSize;
+  double _markdownCodeFontSize = _defaultMarkdownCodeFontSize;
+  double get markdownCodeFontSize => _markdownCodeFontSize;
+  double _markdownCodeLineHeight = _defaultMarkdownCodeLineHeight;
+  double get markdownCodeLineHeight => _markdownCodeLineHeight;
+  double _markdownHeading1FontSize = _defaultMarkdownH1FontSize;
+  double get markdownHeading1FontSize => _markdownHeading1FontSize;
+  double _markdownHeading2FontSize = _defaultMarkdownH2FontSize;
+  double get markdownHeading2FontSize => _markdownHeading2FontSize;
+  double _markdownHeading3FontSize = _defaultMarkdownH3FontSize;
+  double get markdownHeading3FontSize => _markdownHeading3FontSize;
+  double _markdownHeading4FontSize = _defaultMarkdownH4FontSize;
+  double get markdownHeading4FontSize => _markdownHeading4FontSize;
+  double _markdownHeading5FontSize = _defaultMarkdownH5FontSize;
+  double get markdownHeading5FontSize => _markdownHeading5FontSize;
+  double _markdownHeading6FontSize = _defaultMarkdownH6FontSize;
+  double get markdownHeading6FontSize => _markdownHeading6FontSize;
   static const Color _defaultConversationTextLightColor = Color(0xFF1A1B21);
   static const Color _defaultConversationTextDarkColor = Color(0xFFF1F0F7);
   int? _conversationTextLightColorValue;
@@ -3002,12 +3129,99 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   }
 
   Future<void> setChatBaseFontSize(double size) async {
-    final next = size.clamp(10.0, 32.0).toDouble();
+    final next = _clampDisplayFontSize(size);
     if (_chatBaseFontSize == next) return;
     _chatBaseFontSize = next;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_displayChatBaseFontSizeKey, _chatBaseFontSize);
+  }
+
+  Future<void> setMarkdownBaseFontSize(double size) async {
+    final next = _clampDisplayFontSize(size);
+    if (_markdownBaseFontSize == next) return;
+    _markdownBaseFontSize = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(
+      _displayMarkdownBaseFontSizeKey,
+      _markdownBaseFontSize,
+    );
+  }
+
+  Future<void> setMarkdownCodeFontSize(double size) async {
+    final next = _clampDisplayFontSize(size);
+    if (_markdownCodeFontSize == next) return;
+    _markdownCodeFontSize = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(
+      _displayMarkdownCodeFontSizeKey,
+      _markdownCodeFontSize,
+    );
+  }
+
+  Future<void> setMarkdownCodeLineHeight(double height) async {
+    final next = _clampMarkdownCodeLineHeight(height);
+    if (_markdownCodeLineHeight == next) return;
+    _markdownCodeLineHeight = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(
+      _displayMarkdownCodeLineHeightKey,
+      _markdownCodeLineHeight,
+    );
+  }
+
+  double markdownHeadingFontSizeForLevel(int level) {
+    return switch (level) {
+      1 => _markdownHeading1FontSize,
+      2 => _markdownHeading2FontSize,
+      3 => _markdownHeading3FontSize,
+      4 => _markdownHeading4FontSize,
+      5 => _markdownHeading5FontSize,
+      _ => _markdownHeading6FontSize,
+    };
+  }
+
+  Future<void> setMarkdownHeadingFontSize(int level, double size) async {
+    final next = _clampDisplayFontSize(size);
+    late final String key;
+    switch (level) {
+      case 1:
+        if (_markdownHeading1FontSize == next) return;
+        _markdownHeading1FontSize = next;
+        key = _displayMarkdownHeadingH1FontSizeKey;
+        break;
+      case 2:
+        if (_markdownHeading2FontSize == next) return;
+        _markdownHeading2FontSize = next;
+        key = _displayMarkdownHeadingH2FontSizeKey;
+        break;
+      case 3:
+        if (_markdownHeading3FontSize == next) return;
+        _markdownHeading3FontSize = next;
+        key = _displayMarkdownHeadingH3FontSizeKey;
+        break;
+      case 4:
+        if (_markdownHeading4FontSize == next) return;
+        _markdownHeading4FontSize = next;
+        key = _displayMarkdownHeadingH4FontSizeKey;
+        break;
+      case 5:
+        if (_markdownHeading5FontSize == next) return;
+        _markdownHeading5FontSize = next;
+        key = _displayMarkdownHeadingH5FontSizeKey;
+        break;
+      default:
+        if (_markdownHeading6FontSize == next) return;
+        _markdownHeading6FontSize = next;
+        key = _displayMarkdownHeadingH6FontSizeKey;
+        break;
+    }
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(key, next);
   }
 
   Future<void> setConversationTextLightColor(Color color) async {
@@ -3540,6 +3754,15 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._newChatAfterDelete = _newChatAfterDelete;
     copy._chatFontScale = _chatFontScale;
     copy._chatBaseFontSize = _chatBaseFontSize;
+    copy._markdownBaseFontSize = _markdownBaseFontSize;
+    copy._markdownCodeFontSize = _markdownCodeFontSize;
+    copy._markdownCodeLineHeight = _markdownCodeLineHeight;
+    copy._markdownHeading1FontSize = _markdownHeading1FontSize;
+    copy._markdownHeading2FontSize = _markdownHeading2FontSize;
+    copy._markdownHeading3FontSize = _markdownHeading3FontSize;
+    copy._markdownHeading4FontSize = _markdownHeading4FontSize;
+    copy._markdownHeading5FontSize = _markdownHeading5FontSize;
+    copy._markdownHeading6FontSize = _markdownHeading6FontSize;
     copy._conversationTextLightColorValue = _conversationTextLightColorValue;
     copy._conversationTextDarkColorValue = _conversationTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;

@@ -45,6 +45,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ChatFontSizeRow(),
                   _RowDivider(),
                   _ChatBodyFontSizeRow(),
+                  _RowDivider(),
+                  _MarkdownFontSettingsSection(),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1300,142 +1302,174 @@ class _LanguageDropdownItemState extends State<_LanguageDropdownItem> {
   }
 }
 
-class _ChatFontSizeRow extends StatefulWidget {
+class _ChatFontSizeRow extends StatelessWidget {
   const _ChatFontSizeRow();
-  @override
-  State<_ChatFontSizeRow> createState() => _ChatFontSizeRowState();
-}
-
-class _ChatFontSizeRowState extends State<_ChatFontSizeRow> {
-  late final TextEditingController _controller;
-  @override
-  void initState() {
-    super.initState();
-    final scale = context.read<SettingsProvider>().chatFontScale;
-    _controller = TextEditingController(text: '${(scale * 100).round()}');
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _commit(String text) {
-    final v = text.trim();
-    final n = double.tryParse(v);
-    if (n == null) return;
-    final clamped = (n / 100.0).clamp(0.5, 1.5);
-    context.read<SettingsProvider>().setChatFontScale(clamped);
-    _controller.text = '${(clamped * 100).round()}';
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    return _LabeledRow(
+    final scale = context.watch<SettingsProvider>().chatFontScale;
+    return _DesktopSliderRow(
       label: l10n.displaySettingsPageChatFontSizeTitle,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IntrinsicWidth(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 36, maxWidth: 72),
-              child: _BorderInput(
-                controller: _controller,
-                onSubmitted: _commit,
-                onFocusLost: _commit,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '%',
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 14,
-              decoration: TextDecoration.none,
-            ),
-          ),
-        ],
-      ),
+      value: scale,
+      min: 0.5,
+      max: 1.5,
+      divisions: 20,
+      valueText: '${(scale * 100).round()}%',
+      onChanged: (value) {
+        context.read<SettingsProvider>().setChatFontScale(value);
+      },
     );
   }
 }
 
-class _ChatBodyFontSizeRow extends StatefulWidget {
+class _ChatBodyFontSizeRow extends StatelessWidget {
   const _ChatBodyFontSizeRow();
 
   @override
-  State<_ChatBodyFontSizeRow> createState() => _ChatBodyFontSizeRowState();
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final value = context.watch<SettingsProvider>().chatBaseFontSize;
+    return _DesktopSliderRow(
+      label: l10n.displaySettingsPageChatBaseFontSizeTitle,
+      value: value,
+      min: 10,
+      max: 50,
+      divisions: 40,
+      valueText: '${value.toStringAsFixed(0)}pt',
+      onChanged: (next) {
+        context.read<SettingsProvider>().setChatBaseFontSize(next);
+      },
+    );
+  }
 }
 
-class _ChatBodyFontSizeRowState extends State<_ChatBodyFontSizeRow> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    final size = context.read<SettingsProvider>().chatBaseFontSize;
-    _controller = TextEditingController(text: _format(size));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  String _format(double value) {
-    final rounded = value.roundToDouble();
-    return rounded == value ? '${rounded.toInt()}' : value.toStringAsFixed(1);
-  }
-
-  void _commit(String text) {
-    final n = double.tryParse(text.trim());
-    if (n == null) return;
-    final clamped = n.clamp(10.0, 32.0).toDouble();
-    context.read<SettingsProvider>().setChatBaseFontSize(clamped);
-    _controller.text = _format(clamped);
-  }
+class _MarkdownFontSettingsSection extends StatelessWidget {
+  const _MarkdownFontSettingsSection();
 
   @override
   Widget build(BuildContext context) {
-    final label =
-        AppLocalizations.of(context)!.displaySettingsPageChatBaseFontSizeTitle;
-    return _LabeledRow(
-      label: label,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IntrinsicWidth(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 44, maxWidth: 88),
-              child: _BorderInput(
-                controller: _controller,
-                onSubmitted: _commit,
-                onFocusLost: _commit,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                ],
-              ),
-            ),
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<SettingsProvider>();
+    final provider = context.read<SettingsProvider>();
+    return Column(
+      children: [
+        _DesktopSliderRow(
+          label: l10n.displaySettingsPageMarkdownBaseFontSizeTitle,
+          value: settings.markdownBaseFontSize,
+          min: 10,
+          max: 50,
+          divisions: 40,
+          valueText: '${settings.markdownBaseFontSize.toStringAsFixed(0)}pt',
+          onChanged: (value) {
+            provider.setMarkdownBaseFontSize(value);
+          },
+        ),
+        const SizedBox(height: 6),
+        for (int level = 1; level <= 6; level++) ...[
+          _DesktopSliderRow(
+            label:
+                '${l10n.displaySettingsPageMarkdownHeadingFontSizeTitle} H$level',
+            value: settings.markdownHeadingFontSizeForLevel(level),
+            min: 10,
+            max: 50,
+            divisions: 40,
+            valueText:
+                '${settings.markdownHeadingFontSizeForLevel(level).toStringAsFixed(0)}pt',
+            onChanged: (value) {
+              provider.setMarkdownHeadingFontSize(level, value);
+            },
           ),
-          const SizedBox(width: 8),
-          Text(
-            'pt',
-            style: TextStyle(
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurface.withValues(alpha: 0.7),
-              fontSize: 14,
-              decoration: TextDecoration.none,
-            ),
+          if (level < 6) const SizedBox(height: 6),
+        ],
+        const SizedBox(height: 6),
+        _DesktopSliderRow(
+          label: l10n.displaySettingsPageMarkdownCodeFontSizeTitle,
+          value: settings.markdownCodeFontSize,
+          min: 10,
+          max: 50,
+          divisions: 40,
+          valueText: '${settings.markdownCodeFontSize.toStringAsFixed(0)}pt',
+          onChanged: (value) {
+            provider.setMarkdownCodeFontSize(value);
+          },
+        ),
+        const SizedBox(height: 6),
+        _DesktopSliderRow(
+          label: l10n.displaySettingsPageMarkdownCodeLineHeightTitle,
+          value: settings.markdownCodeLineHeight,
+          min: 1.0,
+          max: 2.5,
+          divisions: 30,
+          valueText: settings.markdownCodeLineHeight.toStringAsFixed(2),
+          onChanged: (value) {
+            provider.setMarkdownCodeLineHeight(value);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _DesktopSliderRow extends StatelessWidget {
+  const _DesktopSliderRow({
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.divisions,
+    required this.valueText,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double min;
+  final double max;
+  final int divisions;
+  final String valueText;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                    color: cs.onSurface.withValues(alpha: 0.9),
+                    decoration: TextDecoration.none,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                valueText,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: cs.onSurface.withValues(alpha: 0.72),
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: value.clamp(min, max).toDouble(),
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: valueText,
+            onChanged: onChanged,
           ),
         ],
       ),

@@ -64,11 +64,8 @@ double _markdownBaseFontSize(
   TextStyle? preferredStyle,
   double fallback = 15.5,
 }) {
-  final inheritedTextStyle = DefaultTextStyle.of(context).style;
-  return preferredStyle?.fontSize ??
-      inheritedTextStyle.fontSize ??
-      Theme.of(context).textTheme.bodyMedium?.fontSize ??
-      fallback;
+  final settings = context.read<SettingsProvider>();
+  return preferredStyle?.fontSize ?? settings.markdownBaseFontSize;
 }
 
 double _markdownCodeFontSize(
@@ -76,15 +73,11 @@ double _markdownCodeFontSize(
   TextStyle? preferredStyle,
   double fallback = 15.5,
 }) {
-  return math.max(
-    10.0,
-    _markdownBaseFontSize(
-          context,
-          preferredStyle: preferredStyle,
-          fallback: fallback,
-        ) -
-        2.0,
-  );
+  return context.read<SettingsProvider>().markdownCodeFontSize;
+}
+
+double _markdownCodeLineHeight(BuildContext context) {
+  return context.read<SettingsProvider>().markdownCodeLineHeight;
 }
 
 double _neutralizedChatScale(BuildContext context) {
@@ -144,7 +137,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     // Base text style (can be overridden by caller)
     final baseTextStyle = (baseStyle ?? Theme.of(context).textTheme.bodyMedium)
         ?.copyWith(
-          fontSize: baseStyle?.fontSize ?? 15.5,
+          fontSize: baseStyle?.fontSize ?? settings.markdownBaseFontSize,
           height: baseStyle?.height ?? 1.55,
           letterSpacing:
               baseStyle?.letterSpacing ?? (_isZh(context) ? 0.0 : 0.05),
@@ -1153,9 +1146,9 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = context.watch<SettingsProvider>();
-    final bodyFontSize = _markdownBaseFontSize(context, fallback: 13.0);
     final codeFontSize = _markdownCodeFontSize(context, fallback: 13.0);
-    final controlFontSize = bodyFontSize;
+    final codeLineHeight = _markdownCodeLineHeight(context);
+    const double controlFontSize = 14.0;
     final neutralizedMedia = MediaQuery.of(
       context,
     ).copyWith(textScaler: TextScaler.linear(_neutralizedChatScale(context)));
@@ -1209,31 +1202,32 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
               shadowColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
               child: InkWell(
-              onTap: () => setState(() {
-                _manuallyToggled = true;
-                _expanded = !_expanded;
-              }),
-              splashColor: Platform.isIOS ? Colors.transparent : null,
-              highlightColor: Platform.isIOS ? Colors.transparent : null,
-              hoverColor: Platform.isIOS ? Colors.transparent : null,
-              overlayColor: Platform.isIOS
-                  ? const WidgetStatePropertyAll(Colors.transparent)
-                  : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.28),
-                      width: 1.0,
+                onTap: () => setState(() {
+                  _manuallyToggled = true;
+                  _expanded = !_expanded;
+                }),
+                splashColor: Platform.isIOS ? Colors.transparent : null,
+                highlightColor: Platform.isIOS ? Colors.transparent : null,
+                hoverColor: Platform.isIOS ? Colors.transparent : null,
+                overlayColor: Platform.isIOS
+                    ? const WidgetStatePropertyAll(Colors.transparent)
+                    : null,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 0,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.28),
+                        width: 1.0,
+                      ),
                     ),
                   ),
-                ),
-                child: Row(
-                  children: [
+                  child: Row(
+                    children: [
                     const SizedBox(width: 2),
                     Text(
                       MarkdownWithCodeHighlight._displayLanguage(
@@ -1304,8 +1298,8 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                         borderRadius: BorderRadius.circular(6),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 4,
+                            horizontal: 3,
+                            vertical: 1,
                           ),
                           child: Row(
                             children: [
@@ -1314,7 +1308,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 size: 14,
                                 color: _conversationMutedColor(context),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Text(
                                 AppLocalizations.of(
                                   context,
@@ -1356,8 +1350,8 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       borderRadius: BorderRadius.circular(6),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 4,
+                          horizontal: 3,
+                          vertical: 1,
                         ),
                         child: Row(
                           children: [
@@ -1366,7 +1360,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               size: 14,
                               color: _conversationMutedColor(context),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Text(
                               AppLocalizations.of(
                                 context,
@@ -1381,7 +1375,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     AnimatedRotation(
                       turns: _expanded ? 0.25 : 0.0, // right -> down
                       duration: const Duration(milliseconds: 180),
@@ -1394,7 +1388,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     ),
                   ],
                 ),
-              ),
+                ),
               ),
             ),
           ),
@@ -1415,7 +1409,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     key: const ValueKey('code-expanded'),
                     width: double.infinity,
                     color: bodyBg,
-                    padding: const EdgeInsets.fromLTRB(10, 4, 6, 8),
+                    padding: const EdgeInsets.fromLTRB(10, 2, 6, 6),
                     child: () {
                       // Desktop: enable word wrap, allow selection, no height limit, no scroll
                       // Mobile: horizontal scroll by default, or word wrap if setting enabled
@@ -1440,7 +1434,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
                             fontSize: codeFontSize,
-                            height: 1.5,
+                            height: codeLineHeight,
                           ),
                         );
                       }
@@ -1464,7 +1458,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
                             fontSize: codeFontSize,
-                            height: 1.5,
+                            height: codeLineHeight,
                           ),
                         );
                       }
@@ -1487,7 +1481,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
                             fontSize: codeFontSize,
-                            height: 1.5,
+                            height: codeLineHeight,
                           ),
                         ),
                       );
@@ -1497,7 +1491,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     key: const ValueKey('code-collapsed'),
                     width: double.infinity,
                     color: bodyBg,
-                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
+                    padding: const EdgeInsets.fromLTRB(10, 4, 10, 6),
                     child: () {
                       final l10n = AppLocalizations.of(context)!;
                       final code = widget.code;
@@ -1542,7 +1536,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               style: TextStyle(
                                 fontFamily: codeFontFamily,
                                 fontSize: codeFontSize,
-                                height: 1.5,
+                                height: codeLineHeight,
                                 color: _conversationBaseColor(context),
                               ),
                               softWrap: false,
@@ -1644,8 +1638,9 @@ class _MermaidBlockState extends State<_MermaidBlock> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final codeFontSize = _markdownBaseFontSize(context, fallback: 13.0);
-    final controlFontSize = math.max(12.0, codeFontSize - 1.0);
+    final codeFontSize = _markdownCodeFontSize(context, fallback: 13.0);
+    final codeLineHeight = _markdownCodeLineHeight(context);
+    const double controlFontSize = 14.0;
     final neutralizedMedia = MediaQuery.of(
       context,
     ).copyWith(textScaler: TextScaler.linear(_neutralizedChatScale(context)));
@@ -1748,31 +1743,32 @@ class _MermaidBlockState extends State<_MermaidBlock> {
               shadowColor: Colors.transparent,
               surfaceTintColor: Colors.transparent,
               child: InkWell(
-              onTap: () => setState(() => _expanded = !_expanded),
-              splashColor: Platform.isIOS ? Colors.transparent : null,
-              highlightColor: Platform.isIOS ? Colors.transparent : null,
-              hoverColor: Platform.isIOS ? Colors.transparent : null,
-              overlayColor: Platform.isIOS
-                  ? const WidgetStatePropertyAll(Colors.transparent)
-                  : null,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border(
-                    // Show divider only when expanded
-                    bottom: _expanded
-                        ? BorderSide(
-                            color: cs.outlineVariant.withValues(alpha: 0.28),
-                            width: 1.0,
-                          )
-                        : BorderSide.none,
+                onTap: () => setState(() => _expanded = !_expanded),
+                splashColor: Platform.isIOS ? Colors.transparent : null,
+                highlightColor: Platform.isIOS ? Colors.transparent : null,
+                hoverColor: Platform.isIOS ? Colors.transparent : null,
+                overlayColor: Platform.isIOS
+                    ? const WidgetStatePropertyAll(Colors.transparent)
+                    : null,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 0,
                   ),
-                ),
-                child: Row(
-                  children: [
+                  decoration: BoxDecoration(
+                    border: Border(
+                      // Show divider only when expanded
+                      bottom: _expanded
+                          ? BorderSide(
+                              color: cs.outlineVariant.withValues(alpha: 0.28),
+                              width: 1.0,
+                            )
+                          : BorderSide.none,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
                     const SizedBox(width: 2),
                     Text(
                       'mermaid',
@@ -1812,8 +1808,8 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                         borderRadius: BorderRadius.circular(6),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
+                            horizontal: 3,
+                            vertical: 1,
                           ),
                           child: Row(
                             children: [
@@ -1822,7 +1818,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                 size: 14,
                                 color: _conversationMutedColor(context),
                               ),
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Text(
                                 AppLocalizations.of(
                                   context,
@@ -1838,7 +1834,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                         ),
                       ),
                       if (handle != null) ...[
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 4),
                         InkWell(
                           onTap: () async {
                             final l10n = AppLocalizations.of(context)!;
@@ -1872,7 +1868,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                               : null,
                           borderRadius: BorderRadius.circular(6),
                           child: Padding(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(3),
                             child: Icon(
                               Lucide.Download,
                               size: 14,
@@ -1881,7 +1877,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                           ),
                         ),
                       ],
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 4),
                       AnimatedRotation(
                         turns: _expanded ? 0.25 : 0.0,
                         duration: const Duration(milliseconds: 180),
@@ -1895,7 +1891,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                     ],
                   ],
                 ),
-              ),
+                ),
               ),
             ),
           ),
@@ -1946,7 +1942,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                   textStyle: TextStyle(
                                     fontFamily: 'monospace',
                                     fontSize: codeFontSize,
-                                    height: 1.5,
+                                    height: codeLineHeight,
                                   ),
                                 ),
                               );
@@ -1989,7 +1985,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                         textStyle: TextStyle(
                                           fontFamily: 'monospace',
                                           fontSize: codeFontSize,
-                                          height: 1.5,
+                                          height: codeLineHeight,
                                         ),
                                       ),
                                     ),
@@ -2366,16 +2362,9 @@ class AtxHeadingMd extends BlockMd {
         } catch (_) {}
       }
     }
-    final bodySize = _markdownBaseFontSize(ctx, preferredStyle: cfg.style);
-    final increment = switch (level) {
-      1 => 4.0,
-      2 => 3.0,
-      3 => 2.0,
-      4 => 1.5,
-      5 => 1.0,
-      _ => 0.5,
-    };
-    final base = TextStyle(fontSize: bodySize + increment - 1.0);
+    final base = TextStyle(
+      fontSize: settings.markdownHeadingFontSizeForLevel(level),
+    );
     final weight = switch (level) {
       1 => FontWeight.w700,
       2 => FontWeight.w600,

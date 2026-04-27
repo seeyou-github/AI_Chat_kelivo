@@ -6344,6 +6344,30 @@ abstract class AppLocalizations {
   /// **'Base Font Size'**
   String get displaySettingsPageChatBaseFontSizeTitle;
 
+  /// No description provided for @displaySettingsPageMarkdownBaseFontSizeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown Body Font Size'**
+  String get displaySettingsPageMarkdownBaseFontSizeTitle;
+
+  /// No description provided for @displaySettingsPageMarkdownHeadingFontSizeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown Heading Font Size'**
+  String get displaySettingsPageMarkdownHeadingFontSizeTitle;
+
+  /// No description provided for @displaySettingsPageMarkdownCodeFontSizeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown Code Font Size'**
+  String get displaySettingsPageMarkdownCodeFontSizeTitle;
+
+  /// No description provided for @displaySettingsPageMarkdownCodeLineHeightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Block Line Height'**
+  String get displaySettingsPageMarkdownCodeLineHeightTitle;
+
   /// No description provided for @displaySettingsPageAutoScrollEnableTitle.
   ///
   /// In en, this message translates to:

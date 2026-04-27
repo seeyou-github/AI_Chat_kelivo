@@ -98,6 +98,7 @@ class Win32Window {
 
   bool quit_on_close_ = false;
   bool dark_mode_enabled_ = false;
+  bool start_maximized_ = false;
   HBRUSH background_brush_ = nullptr;
 
   // window handle for top level window.
