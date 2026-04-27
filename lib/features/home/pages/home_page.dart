@@ -115,13 +115,11 @@ class _HomePageState extends State<HomePage>
     _controller.addListener(_onControllerChanged);
     _drawerController.addListener(_onDrawerValueChanged);
 
-    _controller.initChat();
     _initProcessText();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.measureInputBar();
-      if (!mounted) return;
-      context.read<WorldBookProvider>().initialize();
+      unawaited(_controller.initChat());
     });
   }
 

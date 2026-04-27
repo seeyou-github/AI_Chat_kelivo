@@ -14,7 +14,7 @@ class WindowsPortableStorage {
 
   static Future<void> installIfNeeded() async {
     if (_installed || !Platform.isWindows) return;
-    await AppDirectories.ensureWindowsPortableStorageReady();
+    await AppDirectories.ensureWindowsPortableSharedPrefsReady();
     final backend = await _PortablePreferencesBackend.create();
     SharedPreferencesStorePlatform.instance =
         _WindowsPortableSharedPreferencesStore(backend);
@@ -120,7 +120,9 @@ class _PortablePreferencesBackend {
 
   static Future<_PortablePreferencesBackend> create() async {
     final configDir = await AppDirectories.getAppDataDirectory();
-    final file = File('${configDir.path}${Platform.pathSeparator}shared_preferences.json');
+    final file = File(
+      '${configDir.path}${Platform.pathSeparator}shared_preferences.json',
+    );
     final backend = _PortablePreferencesBackend._(file);
     await backend._ensureLoaded();
     return backend;
@@ -133,19 +135,21 @@ class _PortablePreferencesBackend {
 
   Future<bool> mutate(bool Function(Map<String, Object> prefs) action) async {
     final completer = Completer<bool>();
-    _queue = _queue.then((_) async {
-      await _ensureLoaded();
-      final prefs = _cache!;
-      final changed = action(prefs);
-      if (changed) {
-        await _write(prefs);
-      }
-      completer.complete(changed);
-    }).catchError((Object error, StackTrace stackTrace) {
-      if (!completer.isCompleted) {
-        completer.completeError(error, stackTrace);
-      }
-    });
+    _queue = _queue
+        .then((_) async {
+          await _ensureLoaded();
+          final prefs = _cache!;
+          final changed = action(prefs);
+          if (changed) {
+            await _write(prefs);
+          }
+          completer.complete(changed);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          if (!completer.isCompleted) {
+            completer.completeError(error, stackTrace);
+          }
+        });
     return completer.future;
   }
 

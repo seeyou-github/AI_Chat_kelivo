@@ -111,6 +111,7 @@ class HomePageController extends ChangeNotifier {
   McpProvider? _mcpProvider;
   StreamSubscription<ChatAction>? _chatActionSub;
   Timer? _deferredProviderWarmupTimer;
+  bool _didStartChatInit = false;
 
   // ============================================================================
   // Animation Controllers
@@ -417,7 +418,8 @@ class HomePageController extends ChangeNotifier {
             await quickPhraseProvider.initialize();
           } catch (_) {}
           try {
-            final instructionProvider = _context.read<InstructionInjectionProvider>();
+            final instructionProvider = _context
+                .read<InstructionInjectionProvider>();
             await instructionProvider.initialize();
           } catch (_) {}
           try {
@@ -527,32 +529,114 @@ class HomePageController extends ChangeNotifier {
   }
 
   Future<void> initChat() async {
+    if (_didStartChatInit) return;
+    _didStartChatInit = true;
     final prefs = _context.read<SettingsProvider>();
     final assistantProvider = _context.read<AssistantProvider>();
-    await _chatService.init();
     if (prefs.newChatOnLaunch) {
-      await _createNewConversation();
-    } else {
-      final conversations = _chatService.getAllConversations();
-      if (conversations.isNotEmpty) {
-        final recent = conversations.first;
-        if ((recent.assistantId ?? '').isNotEmpty) {
-          try {
-            unawaited(assistantProvider.setCurrentAssistant(recent.assistantId!));
-          } catch (_) {}
-        }
-        _chatService.setCurrentConversation(recent.id);
-        unawaited(
-          _chatController.setCurrentConversationDeferred(recent).then((_) {
-            if (currentConversation?.id != recent.id) return;
-            _streamController.clearGeminiThoughtSigs();
-            _restoreMessageUiState();
-            notifyListeners();
-            _scrollToBottomSoon(animate: false);
-          }),
-        );
-        notifyListeners();
-      }
+      final draft = await _showStartupDraftConversation(
+        assistantId: assistantProvider.currentAssistantId,
+      );
+      unawaited(
+        _warmStartupDraftConversation(
+          conversationId: draft.id,
+          assistantId: draft.assistantId,
+        ),
+      );
+      return;
+    }
+
+    await _chatService.initConversationsOnly();
+    final conversations = _chatService.getAllConversations();
+    if (conversations.isEmpty) {
+      unawaited(_chatService.init());
+      return;
+    }
+
+    final recent = conversations.first;
+    if ((recent.assistantId ?? '').isNotEmpty) {
+      try {
+        unawaited(assistantProvider.setCurrentAssistant(recent.assistantId!));
+      } catch (_) {}
+    }
+    _chatService.setCurrentConversation(recent.id);
+    _chatController.setCurrentConversation(recent);
+    _streamController.clearAllState();
+    notifyListeners();
+    unawaited(_hydrateStartupConversation(recent.id));
+  }
+
+  Future<Conversation> _showStartupDraftConversation({
+    String? assistantId,
+  }) async {
+    _translations.clear();
+    final conversation = await _chatService.createDraftConversation(
+      title: _titleForLocale(_context),
+      assistantId: assistantId,
+    );
+    _chatController.setCurrentConversation(conversation);
+    _streamController.clearAllState();
+    notifyListeners();
+    _scrollToBottomSoon(animate: false);
+    return conversation;
+  }
+
+  Future<void> _warmStartupDraftConversation({
+    required String conversationId,
+    required String? assistantId,
+  }) async {
+    try {
+      await _chatService.init();
+      await _injectStartupPresetMessages(
+        conversationId: conversationId,
+        assistantId: assistantId,
+      );
+    } catch (_) {
+      return;
+    }
+    if (_chatController.currentConversation?.id != conversationId) return;
+    _chatController.reloadMessages();
+    _restoreMessageUiState();
+    notifyListeners();
+    _scrollToBottomSoon(animate: false);
+  }
+
+  Future<void> _hydrateStartupConversation(String conversationId) async {
+    try {
+      await _chatService.init();
+    } catch (_) {
+      return;
+    }
+    if (_chatController.currentConversation?.id != conversationId) return;
+    final restored = _chatService.getConversation(conversationId);
+    if (restored == null) return;
+    await _chatController.setCurrentConversationDeferred(restored);
+    if (_chatController.currentConversation?.id != conversationId) return;
+    _streamController.clearGeminiThoughtSigs();
+    _restoreMessageUiState();
+    notifyListeners();
+    _scrollToBottomSoon(animate: false);
+  }
+
+  Future<void> _injectStartupPresetMessages({
+    required String conversationId,
+    required String? assistantId,
+  }) async {
+    if (_chatService.getMessages(conversationId).isNotEmpty) return;
+    final assistantProvider = _context.read<AssistantProvider>();
+    final presets = assistantProvider.getPresetMessagesForAssistant(
+      assistantId,
+    );
+    if (presets.isEmpty) return;
+    for (final preset in presets) {
+      final role = (preset['role'] == 'assistant') ? 'assistant' : 'user';
+      final content = (preset['content'] ?? '').trim();
+      if (content.isEmpty) continue;
+      await _chatService.addMessage(
+        conversationId: conversationId,
+        role: role,
+        content: content,
+      );
     }
   }
 

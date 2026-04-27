@@ -51,18 +51,19 @@ class SettingsProvider extends ChangeNotifier {
   static double _clampDisplayFontSize(num value) =>
       value.clamp(_minDisplayFontSize, _maxDisplayFontSize).toDouble();
 
-  static double _clampMarkdownCodeFontSize(num value) =>
-      value.clamp(_minMarkdownCodeFontSize, _maxMarkdownCodeFontSize)
-          .toDouble();
+  static double _clampMarkdownCodeFontSize(num value) => value
+      .clamp(_minMarkdownCodeFontSize, _maxMarkdownCodeFontSize)
+      .toDouble();
 
   static double _clampMarkdownCodeLineHeight(num value) =>
       value.clamp(1.0, 2.5).toDouble();
 
-  static double _clampChatBubbleHorizontalMarginFactor(num value) =>
-      value.clamp(
+  static double _clampChatBubbleHorizontalMarginFactor(num value) => value
+      .clamp(
         _minChatBubbleHorizontalMarginFactor,
         _maxChatBubbleHorizontalMarginFactor,
-      ).toDouble();
+      )
+      .toDouble();
 
   static const String _providersOrderKey = 'providers_order_v1';
   static const String _providerGroupsKey =
@@ -449,6 +450,8 @@ class SettingsProvider extends ChangeNotifier {
   final Map<String, bool?> _searchConnection = <String, bool?>{};
   Map<String, bool?> get searchConnection =>
       Map.unmodifiable(_searchConnection);
+  Future<void>? _deferredLoadFuture;
+  bool _deferredLoadCompleted = false;
 
   // ===== Global Proxy Settings =====
   bool _globalProxyEnabled = false;
@@ -470,11 +473,34 @@ class SettingsProvider extends ChangeNotifier {
   SettingsProvider({SharedPreferences? initialPrefs}) {
     if (initialPrefs != null) {
       _applyInitialDisplayPreferences(initialPrefs);
+      return;
     }
-    _load(initialPrefs: initialPrefs);
+    unawaited(ensureDeferredLoaded());
+  }
+
+  bool get deferredLoadCompleted => _deferredLoadCompleted;
+
+  Future<void> ensureDeferredLoaded({SharedPreferences? initialPrefs}) async {
+    if (_deferredLoadCompleted) return;
+    final existing = _deferredLoadFuture;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    final future = _load(initialPrefs: initialPrefs);
+    _deferredLoadFuture = future;
+    try {
+      await future;
+      _deferredLoadCompleted = true;
+    } finally {
+      if (!_deferredLoadCompleted) {
+        _deferredLoadFuture = null;
+      }
+    }
   }
 
   void _applyInitialDisplayPreferences(SharedPreferences prefs) {
+    _providersOrder = prefs.getStringList(_providersOrderKey) ?? [];
     final m = prefs.getString(_themeModeKey);
     switch (m) {
       case 'light':
@@ -489,6 +515,80 @@ class SettingsProvider extends ChangeNotifier {
 
     _themePaletteId = prefs.getString(_themePaletteKey) ?? 'default';
     _useDynamicColor = prefs.getBool(_useDynamicColorKey) ?? true;
+    final cfgStr = prefs.getString(_providerConfigsKey);
+    if (cfgStr != null && cfgStr.isNotEmpty) {
+      try {
+        final raw = jsonDecode(cfgStr) as Map<String, dynamic>;
+        _providerConfigs = raw.map(
+          (k, v) =>
+              MapEntry(k, ProviderConfig.fromJson(v as Map<String, dynamic>)),
+        );
+      } catch (_) {}
+    }
+    final sel = prefs.getString(_selectedModelKey);
+    if (sel != null && sel.contains('::')) {
+      final parts = sel.split('::');
+      if (parts.length >= 2) {
+        _currentModelProvider = parts[0];
+        _currentModelId = parts.sublist(1).join('::');
+      }
+    }
+    _showUserAvatar = prefs.getBool(_displayShowUserAvatarKey) ?? true;
+    _showModelIcon = prefs.getBool(_displayShowModelIconKey) ?? true;
+    _showModelNameTimestamp =
+        prefs.getBool(_displayShowModelNameTimestampKey) ?? true;
+    _showTokenStats = prefs.getBool(_displayShowTokenStatsKey) ?? true;
+    _showUserNameTimestamp =
+        prefs.getBool(_displayShowUserNameTimestampKey) ?? true;
+    final legacyUserNameTs = _showUserNameTimestamp;
+    _showUserName = prefs.getBool(_displayShowUserNameKey) ?? legacyUserNameTs;
+    _showUserTimestamp =
+        prefs.getBool(_displayShowUserTimestampKey) ?? legacyUserNameTs;
+    final legacyModelNameTs = _showModelNameTimestamp;
+    _showModelName =
+        prefs.getBool(_displayShowModelNameKey) ?? legacyModelNameTs;
+    _showModelTimestamp =
+        prefs.getBool(_displayShowModelTimestampKey) ?? legacyModelNameTs;
+    _showUserMessageActions =
+        prefs.getBool(_displayShowUserMessageActionsKey) ?? true;
+    _autoCollapseThinking =
+        prefs.getBool(_displayAutoCollapseThinkingKey) ?? true;
+    _collapseThinkingSteps =
+        prefs.getBool(_displayCollapseThinkingStepsKey) ?? false;
+    _showToolResultSummary =
+        prefs.getBool(_displayShowToolResultSummaryKey) ?? false;
+    _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
+    _useNewAssistantAvatarUx =
+        prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? false;
+    _showProviderInModelCapsule =
+        prefs.getBool(_displayShowProviderInModelCapsuleKey) ?? true;
+    _showProviderInChatMessage =
+        prefs.getBool(_displayShowProviderInChatMessageKey) ?? false;
+    _hapticsOnGenerate = prefs.getBool(_displayHapticsOnGenerateKey) ?? false;
+    _hapticsOnDrawer = prefs.getBool(_displayHapticsOnDrawerKey) ?? true;
+    _hapticsGlobalEnabled =
+        prefs.getBool(_displayHapticsGlobalEnabledKey) ?? true;
+    _hapticsIosSwitch = prefs.getBool(_displayHapticsIosSwitchKey) ?? true;
+    _hapticsOnListItemTap =
+        prefs.getBool(_displayHapticsOnListItemTapKey) ?? true;
+    _hapticsOnCardTap = prefs.getBool(_displayHapticsOnCardTapKey) ?? true;
+    Haptics.setEnabled(_hapticsGlobalEnabled);
+    _showAppUpdates = prefs.getBool(_displayShowAppUpdatesKey) ?? false;
+    _newChatOnLaunch = prefs.getBool(_displayNewChatOnLaunchKey) ?? true;
+    _newChatOnAssistantSwitch =
+        prefs.getBool(_displayNewChatOnAssistantSwitchKey) ?? false;
+    _newChatAfterDelete = prefs.getBool(_displayNewChatAfterDeleteKey) ?? false;
+    final enterToSendPref = prefs.getBool(_displayEnterToSendOnMobileKey);
+    _enterToSendOnMobile = enterToSendPref ?? Platform.isIOS;
+    switch (prefs.getString(_desktopSendShortcutKey)) {
+      case 'ctrlEnter':
+        _desktopSendShortcut = DesktopSendShortcut.ctrlEnter;
+        break;
+      case 'enter':
+      default:
+        _desktopSendShortcut = DesktopSendShortcut.enter;
+    }
+    _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
 
     final pureBgPref = prefs.getBool(_displayUsePureBackgroundKey);
     if (pureBgPref == null) {
@@ -499,8 +599,7 @@ class SettingsProvider extends ChangeNotifier {
       _usePureBackground = pureBgPref;
     }
     _chatBaseFontSize = _clampDisplayFontSize(
-      prefs.getDouble(_displayChatBaseFontSizeKey) ??
-          _defaultChatBaseFontSize,
+      prefs.getDouble(_displayChatBaseFontSizeKey) ?? _defaultChatBaseFontSize,
     );
     _markdownBaseFontSize = _clampDisplayFontSize(
       prefs.getDouble(_displayMarkdownBaseFontSizeKey) ??
@@ -554,6 +653,112 @@ class SettingsProvider extends ChangeNotifier {
     _conversationCodeTextDarkColorValue = prefs.getInt(
       _displayConversationCodeTextDarkColorKey,
     );
+    _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
+    _autoScrollIdleSeconds =
+        prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
+    _chatBackgroundMaskStrength =
+        prefs.getDouble(_displayChatBackgroundMaskStrengthKey) ?? 1.0;
+    _enableDollarLatex = prefs.getBool(_displayEnableDollarLatexKey) ?? true;
+    _enableMathRendering =
+        prefs.getBool(_displayEnableMathRenderingKey) ?? true;
+    _enableUserMarkdown = prefs.getBool(_displayEnableUserMarkdownKey) ?? true;
+    _enableReasoningMarkdown =
+        prefs.getBool(_displayEnableReasoningMarkdownKey) ?? true;
+    _enableAssistantMarkdown =
+        prefs.getBool(_displayEnableAssistantMarkdownKey) ?? true;
+    _showChatListDate = prefs.getBool(_displayShowChatListDateKey) ?? false;
+    _mobileCodeBlockWrap =
+        prefs.getBool(_displayMobileCodeBlockWrapKey) ?? false;
+    _autoCollapseCodeBlock =
+        prefs.getBool(_displayAutoCollapseCodeBlockKey) ?? false;
+    _autoCollapseCodeBlockLines =
+        (prefs.getInt(_displayAutoCollapseCodeBlockLinesKey) ?? 2).clamp(
+          1,
+          999,
+        );
+    _desktopAutoSwitchTopics =
+        prefs.getBool(_displayDesktopAutoSwitchTopicsKey) ?? false;
+    final trayPref = prefs.getBool(_displayDesktopShowTrayKey);
+    if (trayPref == null) {
+      final isDesktop =
+          Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+      _desktopShowTray = isDesktop;
+    } else {
+      _desktopShowTray = trayPref;
+    }
+    final minimizeTrayPref = prefs.getBool(
+      _displayDesktopMinimizeToTrayOnCloseKey,
+    );
+    _desktopMinimizeToTrayOnClose =
+        (minimizeTrayPref ?? _desktopShowTray) && _desktopShowTray;
+    switch (prefs.getString(_desktopTopicPositionKey)) {
+      case 'right':
+        _desktopTopicPosition = DesktopTopicPosition.right;
+        break;
+      case 'left':
+      default:
+        _desktopTopicPosition = DesktopTopicPosition.left;
+    }
+    _desktopRightSidebarOpen =
+        prefs.getBool(_desktopRightSidebarOpenKey) ?? true;
+    switch (prefs.getString(_displayChatMessageBackgroundStyleKey) ??
+        'default') {
+      case 'frosted':
+        _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.frosted;
+        break;
+      case 'solid':
+        _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.solid;
+        break;
+      default:
+        _chatMessageBackgroundStyle = ChatMessageBackgroundStyle.defaultStyle;
+    }
+    _desktopSidebarWidth = prefs.getDouble(_desktopSidebarWidthKey) ?? 300;
+    _desktopSidebarOpen = prefs.getBool(_desktopSidebarOpenKey) ?? true;
+    _desktopRightSidebarWidth =
+        prefs.getDouble(_desktopRightSidebarWidthKey) ?? 300;
+    _appLocaleTag = prefs.getString(_appLocaleKey);
+    if (_appLocaleTag == null || _appLocaleTag!.isEmpty) {
+      _appLocaleTag = 'system';
+    }
+    _globalProxyEnabled = prefs.getBool(_globalProxyEnabledKey) ?? false;
+    _globalProxyType = prefs.getString(_globalProxyTypeKey) ?? 'http';
+    _globalProxyHost = prefs.getString(_globalProxyHostKey) ?? '';
+    _globalProxyPort = prefs.getString(_globalProxyPortKey) ?? '8080';
+    _globalProxyUsername = prefs.getString(_globalProxyUsernameKey) ?? '';
+    _globalProxyPassword = prefs.getString(_globalProxyPasswordKey) ?? '';
+    _globalProxyBypass =
+        prefs.getString(_globalProxyBypassKey) ??
+        _defaultGlobalProxyBypassRules;
+    _appFontFamily = _nonEmpty(prefs.getString(_displayAppFontFamilyKey));
+    _codeFontFamily = _nonEmpty(prefs.getString(_displayCodeFontFamilyKey));
+    _appFontIsGoogle = prefs.getBool(_displayAppFontIsGoogleKey) ?? false;
+    _codeFontIsGoogle = prefs.getBool(_displayCodeFontIsGoogleKey) ?? false;
+    _appFontLocalAlias = _nonEmpty(
+      prefs.getString(_displayAppFontLocalAliasKey),
+    );
+    _codeFontLocalAlias = _nonEmpty(
+      prefs.getString(_displayCodeFontLocalAliasKey),
+    );
+    _appFontLocalPath = _nonEmpty(prefs.getString(_displayAppFontLocalPathKey));
+    _codeFontLocalPath = _nonEmpty(
+      prefs.getString(_displayCodeFontLocalPathKey),
+    );
+    final webdavStr = prefs.getString(_webDavConfigKey);
+    if (webdavStr != null && webdavStr.isNotEmpty) {
+      try {
+        _webDavConfig = WebDavConfig.fromJson(
+          jsonDecode(webdavStr) as Map<String, dynamic>,
+        );
+      } catch (_) {}
+    }
+    final s3Str = prefs.getString(_s3ConfigKey);
+    if (s3Str != null && s3Str.isNotEmpty) {
+      try {
+        _s3Config = S3Config.fromJson(
+          jsonDecode(s3Str) as Map<String, dynamic>,
+        );
+      } catch (_) {}
+    }
   }
 
   Future<_MigrationResult> _migrateEmbeddingModelOverrides(
@@ -971,8 +1176,7 @@ class SettingsProvider extends ChangeNotifier {
     }
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
     _chatBaseFontSize = _clampDisplayFontSize(
-      prefs.getDouble(_displayChatBaseFontSizeKey) ??
-          _defaultChatBaseFontSize,
+      prefs.getDouble(_displayChatBaseFontSizeKey) ?? _defaultChatBaseFontSize,
     );
     _markdownBaseFontSize = _clampDisplayFontSize(
       prefs.getDouble(_displayMarkdownBaseFontSizeKey) ??
@@ -3157,10 +3361,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   Color get conversationCodeTextDarkColor =>
       _colorFromValue(_conversationCodeTextDarkColorValue) ??
       _defaultConversationCodeTextDarkColor;
-  Color resolveConversationTextColor(
-    Brightness brightness, {
-    Color? fallback,
-  }) {
+  Color resolveConversationTextColor(Brightness brightness, {Color? fallback}) {
     if (brightness == Brightness.dark) {
       return _colorFromValue(_conversationTextDarkColorValue) ??
           fallback ??
@@ -3902,8 +4103,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
         _conversationCodeTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;
     copy._autoScrollIdleSeconds = _autoScrollIdleSeconds;
-    copy._chatBubbleHorizontalMarginFactor =
-        _chatBubbleHorizontalMarginFactor;
+    copy._chatBubbleHorizontalMarginFactor = _chatBubbleHorizontalMarginFactor;
     copy._enableDollarLatex = _enableDollarLatex;
     copy._enableMathRendering = _enableMathRendering;
     copy._enableUserMarkdown = _enableUserMarkdown;

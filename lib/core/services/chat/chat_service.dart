@@ -23,6 +23,7 @@ class ChatService extends ChangeNotifier {
   String? _currentConversationId;
   final Map<String, List<ChatMessage>> _messagesCache = {};
   final Map<String, Conversation> _draftConversations = {};
+  List<Conversation>? _sortedConversationsCache;
 
   // Localized default title for new conversations; set by UI on startup.
   String _defaultConversationTitle = 'New Chat';
@@ -31,15 +32,39 @@ class ChatService extends ChangeNotifier {
     _defaultConversationTitle = title.trim();
   }
 
-  bool _initialized = false;
-  bool get initialized => _initialized;
+  bool _conversationStoreReady = false;
+  bool _messagesStoreReady = false;
+  bool _toolEventsStoreReady = false;
+  bool get conversationsReady => _conversationStoreReady;
+  bool get initialized =>
+      _conversationStoreReady && _messagesStoreReady && _toolEventsStoreReady;
+  Future<void>? _hiveInitFuture;
+  Future<void>? _conversationInitFuture;
   Future<void>? _initFuture;
   Future<void>? _startupMaintenanceFuture;
 
   String? get currentConversationId => _currentConversationId;
 
+  @override
+  void notifyListeners() {
+    _sortedConversationsCache = null;
+    super.notifyListeners();
+  }
+
+  Future<void> initConversationsOnly() async {
+    if (_conversationStoreReady) return;
+    final existing = _conversationInitFuture;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    final future = _initConversationStore();
+    _conversationInitFuture = future;
+    await future;
+  }
+
   Future<void> init() async {
-    if (_initialized) return;
+    if (initialized) return;
     final existing = _initFuture;
     if (existing != null) {
       await existing;
@@ -50,26 +75,47 @@ class ChatService extends ChangeNotifier {
     await future;
   }
 
-  Future<void> _initCore() async {
-    if (_initialized) return;
-
-    // Initialize Hive with platform-specific directory
-    final appDataDir = await AppDirectories.getAppDataDirectory();
-    await Hive.initFlutter(appDataDir.path);
-
-    // Register adapters if not already registered
-    if (!Hive.isAdapterRegistered(0)) {
-      Hive.registerAdapter(ChatMessageAdapter());
+  Future<void> _ensureHiveReady() async {
+    final existing = _hiveInitFuture;
+    if (existing != null) {
+      await existing;
+      return;
     }
-    if (!Hive.isAdapterRegistered(1)) {
-      Hive.registerAdapter(ConversationAdapter());
-    }
+    final future = () async {
+      await AppDirectories.ensureWindowsPortableStorageReady();
+      final appDataDir = await AppDirectories.getAppDataDirectory();
+      await Hive.initFlutter(appDataDir.path);
 
+      if (!Hive.isAdapterRegistered(0)) {
+        Hive.registerAdapter(ChatMessageAdapter());
+      }
+      if (!Hive.isAdapterRegistered(1)) {
+        Hive.registerAdapter(ConversationAdapter());
+      }
+    }();
+    _hiveInitFuture = future;
+    await future;
+  }
+
+  Future<void> _initConversationStore() async {
+    if (_conversationStoreReady) return;
+    await _ensureHiveReady();
     _conversationsBox = await Hive.openBox<Conversation>(_conversationsBoxName);
-    _messagesBox = await Hive.openBox<ChatMessage>(_messagesBoxName);
-    _toolEventsBox = await Hive.openBox(_toolEventsBoxName);
+    _conversationStoreReady = true;
+    notifyListeners();
+  }
 
-    _initialized = true;
+  Future<void> _initCore() async {
+    if (initialized) return;
+    await initConversationsOnly();
+    if (!_messagesStoreReady) {
+      _messagesBox = await Hive.openBox<ChatMessage>(_messagesBoxName);
+      _messagesStoreReady = true;
+    }
+    if (!_toolEventsStoreReady) {
+      _toolEventsBox = await Hive.openBox(_toolEventsBoxName);
+      _toolEventsStoreReady = true;
+    }
     notifyListeners();
     unawaited(ensureStartupMaintenance());
   }
@@ -96,9 +142,15 @@ class ChatService extends ChangeNotifier {
   }
 
   List<Conversation> getAllConversations() {
-    if (!_initialized) return [];
-    final conversations = _conversationsBox.values.toList();
+    final cached = _sortedConversationsCache;
+    if (cached != null) return List<Conversation>.from(cached);
+
+    final conversations = <Conversation>[
+      if (_conversationStoreReady) ..._conversationsBox.values,
+      ..._draftConversations.values,
+    ];
     conversations.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    _sortedConversationsCache = List<Conversation>.from(conversations);
     return conversations;
   }
 
@@ -107,17 +159,16 @@ class ChatService extends ChangeNotifier {
   }
 
   Conversation? getConversation(String id) {
-    if (!_initialized) return null;
-    return _conversationsBox.get(id) ?? _draftConversations[id];
+    return _draftConversations[id] ??
+        (_conversationStoreReady ? _conversationsBox.get(id) : null);
   }
 
   List<ChatMessage> getMessages(String conversationId) {
-    if (!_initialized) return [];
-
     // Check cache first
     if (_messagesCache.containsKey(conversationId)) {
       return _messagesCache[conversationId]!;
     }
+    if (!_messagesStoreReady || !_conversationStoreReady) return [];
 
     // Load from storage
     final conversation = _conversationsBox.get(conversationId);
@@ -140,7 +191,7 @@ class ChatService extends ChangeNotifier {
     String? title,
     String? assistantId,
   }) async {
-    if (!_initialized) await init();
+    await initConversationsOnly();
 
     final conversation = Conversation(
       title: title ?? _defaultConversationTitle,
@@ -158,7 +209,6 @@ class ChatService extends ChangeNotifier {
     String? title,
     String? assistantId,
   }) async {
-    if (!_initialized) await init();
     final conversation = Conversation(
       title: title ?? _defaultConversationTitle,
       assistantId: assistantId,
@@ -170,8 +220,6 @@ class ChatService extends ChangeNotifier {
   }
 
   Future<void> deleteConversation(String id) async {
-    if (!_initialized) return;
-
     // If it's a draft and never persisted, just drop it.
     if (_draftConversations.containsKey(id)) {
       _draftConversations.remove(id);
@@ -181,6 +229,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await init();
 
     final conversation = _conversationsBox.get(id);
     if (conversation == null) return;
@@ -408,7 +457,7 @@ class ChatService extends ChangeNotifier {
     Conversation conversation,
     List<ChatMessage> messages,
   ) async {
-    if (!_initialized) await init();
+    await init();
     // Restore messages first
     for (final m in messages) {
       await _messagesBox.put(m.id, m);
@@ -440,7 +489,7 @@ class ChatService extends ChangeNotifier {
     String conversationId,
     ChatMessage message,
   ) async {
-    if (!_initialized) await init();
+    await init();
 
     // Add message to box
     await _messagesBox.put(message.id, message);
@@ -467,10 +516,7 @@ class ChatService extends ChangeNotifier {
 
   // Conversation-scoped MCP servers selection
   List<String> getConversationMcpServers(String conversationId) {
-    if (!_initialized) return const <String>[];
-    final c =
-        _conversationsBox.get(conversationId) ??
-        _draftConversations[conversationId];
+    final c = getConversation(conversationId);
     return c?.mcpServerIds ?? const <String>[];
   }
 
@@ -478,7 +524,6 @@ class ChatService extends ChangeNotifier {
     String conversationId,
     List<String> serverIds,
   ) async {
-    if (!_initialized) await init();
     if (_draftConversations.containsKey(conversationId)) {
       final draft = _draftConversations[conversationId]!;
       draft.mcpServerIds = List.of(serverIds);
@@ -486,6 +531,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
     final c = _conversationsBox.get(conversationId);
     if (c == null) return;
     c.mcpServerIds = List.of(serverIds);
@@ -510,8 +556,6 @@ class ChatService extends ChangeNotifier {
   }
 
   Future<void> renameConversation(String id, String newTitle) async {
-    if (!_initialized) return;
-
     if (_draftConversations.containsKey(id)) {
       final draft = _draftConversations[id]!;
       draft.title = newTitle;
@@ -519,6 +563,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
     final conversation = _conversationsBox.get(id);
     if (conversation == null) return;
 
@@ -534,8 +579,6 @@ class ChatService extends ChangeNotifier {
     String summary,
     int messageCount,
   ) async {
-    if (!_initialized) return;
-
     if (_draftConversations.containsKey(id)) {
       final draft = _draftConversations[id]!;
       draft.summary = summary;
@@ -543,6 +586,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
 
     final conversation = _conversationsBox.get(id);
     if (conversation == null) return;
@@ -557,7 +601,6 @@ class ChatService extends ChangeNotifier {
   List<Conversation> getConversationsWithSummaryForAssistant(
     String assistantId,
   ) {
-    if (!_initialized) return [];
     return getAllConversations()
         .where(
           (c) =>
@@ -570,8 +613,6 @@ class ChatService extends ChangeNotifier {
 
   /// Clears the summary of a specific conversation.
   Future<void> clearConversationSummary(String conversationId) async {
-    if (!_initialized) return;
-
     if (_draftConversations.containsKey(conversationId)) {
       final draft = _draftConversations[conversationId]!;
       draft.summary = null;
@@ -579,6 +620,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
 
     final conversation = _conversationsBox.get(conversationId);
     if (conversation == null) return;
@@ -590,14 +632,13 @@ class ChatService extends ChangeNotifier {
   }
 
   Future<void> togglePinConversation(String id) async {
-    if (!_initialized) return;
-
     if (_draftConversations.containsKey(id)) {
       final draft = _draftConversations[id]!;
       draft.isPinned = !draft.isPinned;
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
     final conversation = _conversationsBox.get(id);
     if (conversation == null) return;
 
@@ -620,7 +661,7 @@ class ChatService extends ChangeNotifier {
     String? groupId,
     int? version,
   }) async {
-    if (!_initialized) await init();
+    await init();
 
     var conversation = _conversationsBox.get(conversationId);
     // If conversation doesn't exist yet, persist draft (if any)
@@ -689,7 +730,7 @@ class ChatService extends ChangeNotifier {
     int? cachedTokens,
     int? durationMs,
   }) async {
-    if (!_initialized) return;
+    if (!initialized) return;
 
     final message = _messagesBox.get(messageId);
     if (message == null) return;
@@ -748,7 +789,7 @@ class ChatService extends ChangeNotifier {
     int? cachedTokens,
     int? durationMs,
   }) async {
-    if (!_initialized) return;
+    if (!initialized) return;
 
     final message = _messagesBox.get(messageId);
     if (message == null) return;
@@ -790,7 +831,7 @@ class ChatService extends ChangeNotifier {
 
   // Tool events persistence (per assistant message)
   List<Map<String, dynamic>> getToolEvents(String assistantMessageId) {
-    if (!_initialized) return const <Map<String, dynamic>>[];
+    if (!_toolEventsStoreReady) return const <Map<String, dynamic>>[];
     final v = _toolEventsBox.get(assistantMessageId);
     if (v is List) {
       return v
@@ -805,7 +846,7 @@ class ChatService extends ChangeNotifier {
     String assistantMessageId,
     List<Map<String, dynamic>> events,
   ) async {
-    if (!_initialized) await init();
+    await init();
     await _toolEventsBox.put(assistantMessageId, events);
     notifyListeners();
   }
@@ -817,7 +858,7 @@ class ChatService extends ChangeNotifier {
     required Map<String, dynamic> arguments,
     String? content,
   }) async {
-    if (!_initialized) await init();
+    await init();
     final list = List<Map<String, dynamic>>.of(
       getToolEvents(assistantMessageId),
     );
@@ -855,7 +896,7 @@ class ChatService extends ChangeNotifier {
 
   // Gemini thought signature persistence (per assistant message)
   String? getGeminiThoughtSignature(String assistantMessageId) {
-    if (!_initialized) return null;
+    if (!_toolEventsStoreReady) return null;
     final v = _toolEventsBox.get(_sigKey(assistantMessageId));
     if (v is String && v.trim().isNotEmpty) return v;
     return null;
@@ -865,13 +906,13 @@ class ChatService extends ChangeNotifier {
     String assistantMessageId,
     String signature,
   ) async {
-    if (!_initialized) await init();
+    await init();
     await _toolEventsBox.put(_sigKey(assistantMessageId), signature);
     notifyListeners();
   }
 
   Future<void> removeGeminiThoughtSignature(String assistantMessageId) async {
-    if (!_initialized) await init();
+    await init();
     try {
       await _toolEventsBox.delete(_sigKey(assistantMessageId));
     } catch (_) {}
@@ -883,7 +924,7 @@ class ChatService extends ChangeNotifier {
     required List<ChatMessage> sourceMessages,
     Map<String, int>? versionSelections,
   }) async {
-    if (!_initialized) await init();
+    await init();
     // Create new conversation first
     final convo = await createConversation(
       title: title,
@@ -933,7 +974,7 @@ class ChatService extends ChangeNotifier {
     required String messageId,
     required String content,
   }) async {
-    if (!_initialized) await init();
+    await init();
     final original = _messagesBox.get(messageId);
     if (original == null) return null;
 
@@ -991,8 +1032,10 @@ class ChatService extends ChangeNotifier {
 
   Map<String, int> getVersionSelections(String conversationId) {
     final c =
-        _conversationsBox.get(conversationId) ??
-        _draftConversations[conversationId];
+        _draftConversations[conversationId] ??
+        (_conversationStoreReady
+            ? _conversationsBox.get(conversationId)
+            : null);
     return Map<String, int>.from(c?.versionSelections ?? const <String, int>{});
   }
 
@@ -1008,6 +1051,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
     final c = _conversationsBox.get(conversationId);
     if (c == null) return;
     c.versionSelections[groupId] = version;
@@ -1027,6 +1071,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
     final c = _conversationsBox.get(conversationId);
     if (c == null) return;
     c.versionSelections.remove(groupId);
@@ -1039,7 +1084,6 @@ class ChatService extends ChangeNotifier {
     String conversationId, {
     String? defaultTitle,
   }) async {
-    if (!_initialized) await init();
     // Draft case
     if (_draftConversations.containsKey(conversationId)) {
       final draft = _draftConversations[conversationId]!;
@@ -1053,6 +1097,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return draft;
     }
+    await initConversationsOnly();
     // Persisted case
     final c = _conversationsBox.get(conversationId);
     if (c == null) return null;
@@ -1069,7 +1114,7 @@ class ChatService extends ChangeNotifier {
   }
 
   Future<void> deleteMessage(String messageId) async {
-    if (!_initialized) return;
+    if (!initialized) return;
 
     final message = _messagesBox.get(messageId);
     if (message == null) return;
@@ -1148,8 +1193,10 @@ class ChatService extends ChangeNotifier {
   }
 
   Future<void> clearAllData() async {
-    if (!_initialized) return;
-
+    if (!initialized) {
+      if (_draftConversations.isEmpty && !_conversationStoreReady) return;
+      await init();
+    }
     await _messagesBox.clear();
     await _conversationsBox.clear();
     await _toolEventsBox.clear();
@@ -1197,8 +1244,6 @@ class ChatService extends ChangeNotifier {
     required String conversationId,
     required String assistantId,
   }) async {
-    if (!_initialized) await init();
-
     // Draft conversation case
     if (_draftConversations.containsKey(conversationId)) {
       final draft = _draftConversations[conversationId]!;
@@ -1207,6 +1252,7 @@ class ChatService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    await initConversationsOnly();
 
     final c = _conversationsBox.get(conversationId);
     if (c == null) return;

@@ -12,15 +12,22 @@ import 'package:path_provider/path_provider.dart';
 class AppDirectories {
   AppDirectories._();
 
-  static Future<void>? _windowsPortableInit;
+  static Future<void>? _windowsPortableBootstrap;
+  static Future<void>? _windowsPortablePrefsMigration;
+  static Future<void>? _windowsPortableFullMigration;
 
   static bool get _isWindowsDesktop =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
-  static Future<void> ensureWindowsPortableStorageReady() async {
+  static Future<void> ensureWindowsPortableStorageReady({
+    bool migrateLegacyData = true,
+  }) async {
     if (!_isWindowsDesktop) return;
-    _windowsPortableInit ??= _initializeWindowsPortableStorage();
-    await _windowsPortableInit;
+    _windowsPortableBootstrap ??= _initializeWindowsPortableStorage();
+    await _windowsPortableBootstrap;
+    if (!migrateLegacyData) return;
+    _windowsPortableFullMigration ??= _migrateWindowsPortableStorage();
+    await _windowsPortableFullMigration;
   }
 
   static Future<void> _initializeWindowsPortableStorage() async {
@@ -29,7 +36,53 @@ class AppDirectories {
     final cacheDir = Directory(p.join(root.path, 'cache'));
     await configDir.create(recursive: true);
     await cacheDir.create(recursive: true);
+  }
+
+  static Future<void> ensureWindowsPortableSharedPrefsReady() async {
+    if (!_isWindowsDesktop) return;
+    await ensureWindowsPortableStorageReady(migrateLegacyData: false);
+    _windowsPortablePrefsMigration ??= _migrateWindowsPortableSharedPrefs();
+    await _windowsPortablePrefsMigration;
+  }
+
+  static Future<void> _migrateWindowsPortableStorage() async {
+    final root = await _getWindowsPortableRootDirectory();
+    final configDir = Directory(p.join(root.path, 'Config'));
+    final cacheDir = Directory(p.join(root.path, 'cache'));
     await _migrateWindowsLegacyData(configDir: configDir, cacheDir: cacheDir);
+  }
+
+  static Future<void> _migrateWindowsPortableSharedPrefs() async {
+    final root = await _getWindowsPortableRootDirectory();
+    final configDir = Directory(p.join(root.path, 'Config'));
+    final target = File(p.join(configDir.path, 'shared_preferences.json'));
+    if (await target.exists()) return;
+
+    final appData = Platform.environment['APPDATA'];
+    final localAppData = Platform.environment['LOCALAPPDATA'];
+    final candidates = <File>[
+      if (appData != null)
+        File(
+          p.join(appData, 'com.psyche', 'kelivo', 'shared_preferences.json'),
+        ),
+      if (localAppData != null)
+        File(
+          p.join(
+            localAppData,
+            'com.psyche',
+            'kelivo',
+            'shared_preferences.json',
+          ),
+        ),
+    ];
+
+    for (final candidate in candidates) {
+      if (!await candidate.exists()) continue;
+      try {
+        await candidate.copy(target.path);
+        return;
+      } catch (_) {}
+    }
   }
 
   static Future<Directory> _getWindowsPortableRootDirectory() async {
@@ -43,7 +96,9 @@ class AppDirectories {
     required Directory configDir,
     required Directory cacheDir,
   }) async {
-    final marker = File(p.join(configDir.parent.path, '.portable_storage_migrated_v1'));
+    final marker = File(
+      p.join(configDir.parent.path, '.portable_storage_migrated_v1'),
+    );
     if (await marker.exists()) return;
 
     final appData = Platform.environment['APPDATA'];
@@ -80,7 +135,10 @@ class AppDirectories {
     Directory destination, {
     Set<String> skipNames = const <String>{},
   }) async {
-    await for (final entity in source.list(recursive: false, followLinks: false)) {
+    await for (final entity in source.list(
+      recursive: false,
+      followLinks: false,
+    )) {
       final name = p.basename(entity.path);
       if (skipNames.contains(name)) continue;
       if (entity is Directory) {

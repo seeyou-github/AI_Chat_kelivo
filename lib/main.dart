@@ -46,6 +46,7 @@ import 'core/services/notification_service.dart';
 import 'core/services/storage/windows_portable_storage.dart';
 import 'core/services/storage/windows_portable_path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'utils/app_directories.dart';
 
 final RouteObserver<ModalRoute<dynamic>> routeObserver =
     RouteObserver<ModalRoute<dynamic>>();
@@ -106,14 +107,17 @@ Future<void> main() async {
 Future<void> _initDesktopWindow({SharedPreferences? initialPrefs}) async {
   if (kIsWeb) return;
   try {
+    final isWindows = defaultTargetPlatform == TargetPlatform.windows;
     if (defaultTargetPlatform == TargetPlatform.windows) {
       await windowManager.ensureInitialized();
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     }
-    // Initialize and show desktop window with persisted size/position
+    // Windows startup favors first paint: keep the custom title bar and size,
+    // and skip the extra screen query used only for startup centering.
     await DesktopWindowController.instance.initializeAndShow(
       title: 'Kelivo',
       initialPrefs: initialPrefs,
+      centerOnStartup: !isWindows,
     );
   } catch (_) {
     // Ignore on unsupported platforms.
@@ -176,6 +180,13 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
   await Future<void>.delayed(const Duration(milliseconds: 250));
   if (!context.mounted) return;
   final settings = context.read<SettingsProvider>();
+  if (defaultTargetPlatform == TargetPlatform.windows) {
+    unawaited(AppDirectories.ensureWindowsPortableStorageReady());
+  }
+  try {
+    await settings.ensureDeferredLoaded(initialPrefs: _bootstrapPrefs);
+  } catch (_) {}
+  if (!context.mounted) return;
 
   if (!_didEnsureAssistants && l10n != null) {
     _didEnsureAssistants = true;

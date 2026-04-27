@@ -31,7 +31,9 @@ class DesktopHomePage extends StatefulWidget {
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
   int _tabIndex = 0; // 0=Chat, 1=Translate, 2=Storage, 3=Settings
+  bool _translateVisited = false;
   bool _storageVisited = false;
+  bool _settingsVisited = false;
   bool _globalSearchActive = false;
   StreamSubscription<HotkeyAction>? _hotkeySub;
   StreamSubscription<ChatAction>? _chatActionSub;
@@ -42,7 +44,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (widget.initialTabIndex != null) {
       _tabIndex = widget.initialTabIndex!.clamp(0, 3);
     }
+    _translateVisited = _tabIndex == 1;
     _storageVisited = _tabIndex == 2;
+    _settingsVisited = _tabIndex == 3;
     // 初始进入时如果就是聊天页，则聚焦聊天输入框
     if (_tabIndex == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -56,6 +60,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           if (mounted) {
             setState(() {
               _tabIndex = 3;
+              _settingsVisited = true;
               _globalSearchActive = false;
             });
             ChatActionBus.instance.fire(ChatAction.exitGlobalSearch);
@@ -176,6 +181,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               onTapTranslate: () {
                 setState(() {
                   _tabIndex = 1;
+                  _translateVisited = true;
                   _globalSearchActive = false;
                 });
                 ChatActionBus.instance.fire(ChatAction.exitGlobalSearch);
@@ -189,6 +195,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               onTapSettings: () {
                 setState(() {
                   _tabIndex = 3;
+                  _settingsVisited = true;
                   _globalSearchActive = false;
                 });
                 ChatActionBus.instance.fire(ChatAction.exitGlobalSearch);
@@ -202,18 +209,23 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 children: [
                   // Chat page remains mounted
                   const DesktopChatPage(),
-                  // Translate page remains mounted
-                  const DesktopTranslatePage(key: ValueKey('translate_page')),
+                  _translateVisited
+                      ? const DesktopTranslatePage(
+                          key: ValueKey('translate_page'),
+                        )
+                      : const SizedBox.shrink(),
                   _storageVisited
                       ? const StorageSpacePage(
                           key: ValueKey('storage_space_page'),
                           embedded: true,
                         )
                       : const SizedBox.shrink(),
-                  DesktopSettingsPage(
-                    key: const ValueKey('settings_page'),
-                    initialProviderKey: widget.initialProviderKey,
-                  ),
+                  _settingsVisited
+                      ? DesktopSettingsPage(
+                          key: const ValueKey('settings_page'),
+                          initialProviderKey: widget.initialProviderKey,
+                        )
+                      : const SizedBox.shrink(),
                 ],
               ),
             ),
@@ -234,8 +246,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     child: Stack(
                       children: [
                         body,
-                        // Inject the lazily-built settings page into the IndexedStack when needed
-                        // to pass initialProviderKey without dropping chat state.
                         if (_tabIndex == 3) const SizedBox.shrink(),
                       ],
                     ),

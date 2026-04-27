@@ -22,6 +22,7 @@ class DesktopWindowController with WindowListener {
   Future<void> initializeAndShow({
     String? title,
     SharedPreferences? initialPrefs,
+    bool centerOnStartup = true,
   }) async {
     if (kIsWeb) return;
     if (!(defaultTargetPlatform == TargetPlatform.windows ||
@@ -62,10 +63,14 @@ class DesktopWindowController with WindowListener {
       await windowManager.setMinimumSize(minSize);
       await windowManager.setMaximumSize(maxSize);
       await windowManager.setSize(initialSize);
-      try {
-        final position = await _sizeMgr.getCenteredStartupPosition(initialSize);
-        await windowManager.setPosition(position);
-      } catch (_) {}
+      if (centerOnStartup) {
+        try {
+          final position = await _sizeMgr.getCenteredStartupPosition(
+            initialSize,
+          );
+          await windowManager.setPosition(position);
+        } catch (_) {}
+      }
       if (title != null) {
         await windowManager.setTitle(title);
       }

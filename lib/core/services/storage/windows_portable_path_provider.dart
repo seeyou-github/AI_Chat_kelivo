@@ -11,7 +11,9 @@ class WindowsPortablePathProvider extends PathProviderPlatform {
 
   static Future<void> installIfNeeded() async {
     if (_installed || !Platform.isWindows) return;
-    await AppDirectories.ensureWindowsPortableStorageReady();
+    await AppDirectories.ensureWindowsPortableStorageReady(
+      migrateLegacyData: false,
+    );
     PathProviderPlatform.instance = WindowsPortablePathProvider._();
     _installed = true;
   }
