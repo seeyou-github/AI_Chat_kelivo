@@ -54,7 +54,7 @@ bool IsDarkThemeConfiguredForStartup() {
                       std::istreambuf_iterator<char>());
   std::smatch match;
   const std::regex theme_regex(
-      R"("flutter\.theme_mode_v1"\s*:\s*"(dark|light|system)")");
+      "\"flutter\\\\.theme_mode_v1\"\\s*:\\s*\"(dark|light|system)\"");
   if (!std::regex_search(content, match, theme_regex)) {
     return false;
   }
