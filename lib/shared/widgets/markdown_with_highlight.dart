@@ -64,8 +64,9 @@ double _markdownBaseFontSize(
   TextStyle? preferredStyle,
   double fallback = 15.5,
 }) {
+  final inheritedTextStyle = DefaultTextStyle.of(context).style;
   return preferredStyle?.fontSize ??
-      DefaultTextStyle.maybeOf(context)?.style.fontSize ??
+      inheritedTextStyle.fontSize ??
       Theme.of(context).textTheme.bodyMedium?.fontSize ??
       fallback;
 }
