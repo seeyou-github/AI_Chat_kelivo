@@ -141,6 +141,8 @@ class SettingsProvider extends ChangeNotifier {
       'display_enter_to_send_on_mobile_v1';
   static const String _desktopSendShortcutKey = 'desktop_send_shortcut_v1';
   static const String _displayChatFontScaleKey = 'display_chat_font_scale_v1';
+  static const String _displayChatBaseFontSizeKey =
+      'display_chat_base_font_size_v1';
   static const String _displayConversationTextLightColorKey =
       'display_conversation_text_light_color_v1';
   static const String _displayConversationTextDarkColorKey =
@@ -438,6 +440,10 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _usePureBackground = pureBgPref;
     }
+    _chatBaseFontSize =
+        (prefs.getDouble(_displayChatBaseFontSizeKey) ?? 15.0)
+            .clamp(10.0, 32.0)
+            .toDouble();
   }
 
   Future<_MigrationResult> _migrateEmbeddingModelOverrides(
@@ -854,6 +860,10 @@ class SettingsProvider extends ChangeNotifier {
         _desktopSendShortcut = DesktopSendShortcut.enter;
     }
     _chatFontScale = prefs.getDouble(_displayChatFontScaleKey) ?? 1.0;
+    _chatBaseFontSize =
+        (prefs.getDouble(_displayChatBaseFontSizeKey) ?? 15.0)
+            .clamp(10.0, 32.0)
+            .toDouble();
     _conversationTextLightColorValue = prefs.getInt(
       _displayConversationTextLightColorKey,
     );
@@ -2951,6 +2961,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   // Display: chat font scale (0.5 - 1.5, default 1.0)
   double _chatFontScale = 1.0;
   double get chatFontScale => _chatFontScale;
+  double _chatBaseFontSize = 15.0;
+  double get chatBaseFontSize => _chatBaseFontSize;
   static const Color _defaultConversationTextLightColor = Color(0xFF1A1B21);
   static const Color _defaultConversationTextDarkColor = Color(0xFFF1F0F7);
   int? _conversationTextLightColorValue;
@@ -2987,6 +2999,15 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setDouble(_displayChatFontScaleKey, _chatFontScale);
+  }
+
+  Future<void> setChatBaseFontSize(double size) async {
+    final next = size.clamp(10.0, 32.0).toDouble();
+    if (_chatBaseFontSize == next) return;
+    _chatBaseFontSize = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(_displayChatBaseFontSizeKey, _chatBaseFontSize);
   }
 
   Future<void> setConversationTextLightColor(Color color) async {
@@ -3518,6 +3539,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._newChatOnAssistantSwitch = _newChatOnAssistantSwitch;
     copy._newChatAfterDelete = _newChatAfterDelete;
     copy._chatFontScale = _chatFontScale;
+    copy._chatBaseFontSize = _chatBaseFontSize;
     copy._conversationTextLightColorValue = _conversationTextLightColorValue;
     copy._conversationTextDarkColorValue = _conversationTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;

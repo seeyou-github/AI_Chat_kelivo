@@ -1419,6 +1419,7 @@
   "desktopDisplaySettingsTopicPositionRight": "Right",
   "displaySettingsPageNewChatOnLaunchSubtitle": "Automatically create a new chat on launch",
   "displaySettingsPageChatFontSizeTitle": "Chat Font Size",
+  "displaySettingsPageChatBaseFontSizeTitle": "Base Font Size",
   "displaySettingsPageAutoScrollEnableTitle": "Auto-scroll to bottom",
   "displaySettingsPageAutoScrollIdleTitle": "Auto-Scroll Back Delay",
   "displaySettingsPageAutoScrollIdleSubtitle": "Wait time after user scroll before jumping to bottom",

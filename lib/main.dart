@@ -70,7 +70,7 @@ Future<void> main() async {
         _bootstrapPrefs = await SharedPreferences.getInstance();
         final enabled =
             _bootstrapPrefs!.getBool('flutter_log_enabled_v1') ?? false;
-        await FlutterLogger.setEnabled(enabled);
+        unawaited(FlutterLogger.setEnabled(enabled));
       } catch (_) {}
       // Trim Flutter global image cache to reduce memory pressure from large images
       try {
@@ -87,8 +87,8 @@ Future<void> main() async {
       // WidgetsBinding.instance.platformDispatcher.onError = (Object error, StackTrace stack) { ... };
       // logging.Logger.root.level = logging.Level.ALL;
       // logging.Logger.root.onRecord.listen((rec) { ... });
-      // Cache current Documents directory to fix sandboxed absolute paths on iOS
-      await SandboxPathResolver.init();
+      // Warm this in the background; Windows/macOS don't need it for first paint.
+      unawaited(SandboxPathResolver.init());
       // Enable edge-to-edge to allow content under system bars (Android)
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       // Start app (Flutter log capture is toggleable and off by default)

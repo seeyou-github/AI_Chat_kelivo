@@ -3395,6 +3395,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get displaySettingsPageChatFontSizeTitle => 'Chat Font Size';
 
   @override
+  String get displaySettingsPageChatBaseFontSizeTitle => 'Base Font Size';
+
+  @override
   String get displaySettingsPageAutoScrollEnableTitle =>
       'Auto-scroll to bottom';
 

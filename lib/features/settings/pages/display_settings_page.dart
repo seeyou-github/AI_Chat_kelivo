@@ -26,6 +26,11 @@ class DisplaySettingsPage extends StatefulWidget {
 }
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
+  String _chatBaseFontSizeLabel(BuildContext context) {
+    return AppLocalizations.of(context)!
+        .displaySettingsPageChatBaseFontSizeTitle;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -297,6 +302,27 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   );
                 },
                 onTap: () => _showChatFontSizeSheet(context),
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.Type,
+                label: _chatBaseFontSizeLabel(context),
+                detailBuilder: (ctx) {
+                  final size = ctx.watch<SettingsProvider>().chatBaseFontSize;
+                  final rounded = size.roundToDouble();
+                  final text = rounded == size
+                      ? '${rounded.toInt()}pt'
+                      : '${size.toStringAsFixed(1)}pt';
+                  return Text(
+                    text,
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  );
+                },
+                onTap: () => _showChatBaseFontSizeSheet(context),
               ),
               _iosDivider(context),
               _iosNavRow(
@@ -764,7 +790,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                         l10n.displaySettingsPageChatFontSampleText,
                         style: TextStyle(
                           fontSize:
-                              16 *
+                              context.watch<SettingsProvider>().chatBaseFontSize *
                               context.watch<SettingsProvider>().chatFontScale,
                         ),
                       ),
@@ -777,6 +803,116 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         );
       },
     );
+  }
+
+  Future<void> _showChatBaseFontSizeSheet(BuildContext context) async {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(
+      text: context.read<SettingsProvider>().chatBaseFontSize.toStringAsFixed(1),
+    );
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: cs.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      isScrollControlled: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              18 + MediaQuery.of(ctx).viewInsets.bottom,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setModalState) {
+                final settings = context.watch<SettingsProvider>();
+                final value = settings.chatBaseFontSize;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _chatBaseFontSizeLabel(context),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: cs.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                      ],
+                      decoration: InputDecoration(
+                        isDense: true,
+                        suffixText: 'pt',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onSubmitted: (text) async {
+                        final n = double.tryParse(text.trim());
+                        if (n == null) return;
+                        final clamped = n.clamp(10.0, 32.0).toDouble();
+                        await context.read<SettingsProvider>().setChatBaseFontSize(
+                          clamped,
+                        );
+                        controller.text = clamped.toStringAsFixed(1);
+                        setModalState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white12
+                            : const Color(0xFFF2F3F5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        l10n.displaySettingsPageChatFontSampleText,
+                        style: TextStyle(fontSize: value),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () async {
+                          final n = double.tryParse(controller.text.trim());
+                          if (n != null) {
+                            await context
+                                .read<SettingsProvider>()
+                                .setChatBaseFontSize(
+                                  n.clamp(10.0, 32.0).toDouble(),
+                                );
+                          }
+                          if (context.mounted) Navigator.of(context).pop();
+                        },
+                        child: Text(MaterialLocalizations.of(context).okButtonLabel),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+    controller.dispose();
   }
 
   Future<void> _showAutoScrollIdleSheet(BuildContext context) async {

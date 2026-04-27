@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <dwmapi.h>
 #include <flutter_windows.h>
 #include <regex>
@@ -36,10 +37,20 @@ static HBRUSH g_startup_background_brush = nullptr;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
-bool IsDarkThemeConfiguredForStartup() {
+bool GetSystemDarkModePreference() {
+  DWORD light_mode = 1;
+  DWORD light_mode_size = sizeof(light_mode);
+  LSTATUS result = RegGetValue(HKEY_CURRENT_USER, kGetPreferredBrightnessRegKey,
+                               kGetPreferredBrightnessRegValue,
+                               RRF_RT_REG_DWORD, nullptr, &light_mode,
+                               &light_mode_size);
+  return result == ERROR_SUCCESS ? light_mode == 0 : false;
+}
+
+std::optional<bool> GetConfiguredStartupDarkModePreference() {
   wchar_t module_path[MAX_PATH];
   if (GetModuleFileName(nullptr, module_path, MAX_PATH) == 0) {
-    return false;
+    return std::nullopt;
   }
 
   std::filesystem::path exe_path(module_path);
@@ -47,7 +58,7 @@ bool IsDarkThemeConfiguredForStartup() {
       exe_path.parent_path() / L"AppData" / L"Config" / L"shared_preferences.json";
   std::ifstream input(config_path, std::ios::binary);
   if (!input.is_open()) {
-    return false;
+    return std::nullopt;
   }
 
   std::string content((std::istreambuf_iterator<char>(input)),
@@ -56,7 +67,7 @@ bool IsDarkThemeConfiguredForStartup() {
   const std::regex theme_regex(
       "\"flutter\\\\.theme_mode_v1\"\\s*:\\s*\"(dark|light|system)\"");
   if (!std::regex_search(content, match, theme_regex)) {
-    return false;
+    return std::nullopt;
   }
 
   const std::string theme_mode = match[1].str();
@@ -66,14 +77,12 @@ bool IsDarkThemeConfiguredForStartup() {
   if (theme_mode == "light") {
     return false;
   }
+  return std::nullopt;
+}
 
-  DWORD light_mode = 1;
-  DWORD light_mode_size = sizeof(light_mode);
-  LSTATUS result = RegGetValue(HKEY_CURRENT_USER, kGetPreferredBrightnessRegKey,
-                               kGetPreferredBrightnessRegValue,
-                               RRF_RT_REG_DWORD, nullptr, &light_mode,
-                               &light_mode_size);
-  return result == ERROR_SUCCESS ? light_mode == 0 : false;
+bool ResolvePreferredDarkMode() {
+  const auto configured = GetConfiguredStartupDarkModePreference();
+  return configured.value_or(GetSystemDarkModePreference());
 }
 
 void EnsureStartupBackgroundBrush() {
@@ -84,8 +93,7 @@ void EnsureStartupBackgroundBrush() {
   const COLORREF dark_startup_color = RGB(18, 18, 19);
   const COLORREF light_startup_color = RGB(247, 247, 247);
   g_startup_background_brush = CreateSolidBrush(
-      IsDarkThemeConfiguredForStartup() ? dark_startup_color
-                                        : light_startup_color);
+      ResolvePreferredDarkMode() ? dark_startup_color : light_startup_color);
 }
 
 // Scale helper to convert logical scaler values to physical using passed in
@@ -421,20 +429,9 @@ void Win32Window::UpdateBackgroundBrush() {
 }
 
 void Win32Window::UpdateTheme() {
-  DWORD light_mode;
-  DWORD light_mode_size = sizeof(light_mode);
-  LSTATUS result = RegGetValue(HKEY_CURRENT_USER, kGetPreferredBrightnessRegKey,
-                               kGetPreferredBrightnessRegValue,
-                               RRF_RT_REG_DWORD, nullptr, &light_mode,
-                               &light_mode_size);
-
-  if (result == ERROR_SUCCESS) {
-    dark_mode_enabled_ = light_mode == 0;
-    BOOL enable_dark_mode = dark_mode_enabled_;
-    DwmSetWindowAttribute(window_handle_, DWMWA_USE_IMMERSIVE_DARK_MODE,
-                          &enable_dark_mode, sizeof(enable_dark_mode));
-  } else {
-    dark_mode_enabled_ = false;
-  }
+  dark_mode_enabled_ = ResolvePreferredDarkMode();
+  BOOL enable_dark_mode = dark_mode_enabled_;
+  DwmSetWindowAttribute(window_handle_, DWMWA_USE_IMMERSIVE_DARK_MODE,
+                        &enable_dark_mode, sizeof(enable_dark_mode));
   UpdateBackgroundBrush();
 }

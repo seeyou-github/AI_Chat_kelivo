@@ -35,6 +35,13 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
+  flutter_controller_->engine()->SetNextFrameCallback([&]() {
+    this->Show();
+  });
+
+  // Keep a frame pending so the hidden window is shown on the first render.
+  flutter_controller_->ForceRedraw();
+
   // Method channel for clipboard images.
   auto channel = std::make_shared<flutter::MethodChannel<flutter::EncodableValue>>(
       flutter_controller_->engine()->messenger(),
@@ -272,13 +279,6 @@ bool FlutterWindow::OnCreate() {
 
         result->NotImplemented();
       });
-
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
-  });
-
-  // Ensure a frame is pending so the window shows.
-  flutter_controller_->ForceRedraw();
 
   return true;
 }

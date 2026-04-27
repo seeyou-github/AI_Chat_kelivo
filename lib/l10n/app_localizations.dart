@@ -6338,6 +6338,12 @@ abstract class AppLocalizations {
   /// **'Chat Font Size'**
   String get displaySettingsPageChatFontSizeTitle;
 
+  /// No description provided for @displaySettingsPageChatBaseFontSizeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Base Font Size'**
+  String get displaySettingsPageChatBaseFontSizeTitle;
+
   /// No description provided for @displaySettingsPageAutoScrollEnableTitle.
   ///
   /// In en, this message translates to:

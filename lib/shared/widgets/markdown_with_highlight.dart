@@ -77,13 +77,13 @@ double _markdownCodeFontSize(
   double fallback = 15.5,
 }) {
   return math.max(
-    12.0,
+    10.0,
     _markdownBaseFontSize(
           context,
           preferredStyle: preferredStyle,
           fallback: fallback,
         ) -
-        1.0,
+        2.0,
   );
 }
 
@@ -1153,8 +1153,9 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final settings = context.watch<SettingsProvider>();
+    final bodyFontSize = _markdownBaseFontSize(context, fallback: 13.0);
     final codeFontSize = _markdownCodeFontSize(context, fallback: 13.0);
-    final controlFontSize = math.max(12.0, codeFontSize - 1.0);
+    final controlFontSize = bodyFontSize;
     final neutralizedMedia = MediaQuery.of(
       context,
     ).copyWith(textScaler: TextScaler.linear(_neutralizedChatScale(context)));
@@ -1221,7 +1222,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
-                  vertical: 4,
+                  vertical: 2,
                 ),
                 decoration: BoxDecoration(
                   border: Border(
@@ -1304,7 +1305,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
-                            vertical: 6,
+                            vertical: 4,
                           ),
                           child: Row(
                             children: [
@@ -1319,7 +1320,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                   context,
                                 )!.codeBlockPreviewButton,
                                 style: TextStyle(
-                                  fontSize: controlFontSize - 1,
+                                  fontSize: controlFontSize,
                                   color: _conversationMutedColor(context),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -1356,7 +1357,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 6,
-                          vertical: 6,
+                          vertical: 4,
                         ),
                         child: Row(
                           children: [
@@ -1371,7 +1372,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 context,
                               )!.shareProviderSheetCopyButton,
                               style: TextStyle(
-                                fontSize: controlFontSize - 1,
+                                fontSize: controlFontSize,
                                 color: _conversationMutedColor(context),
                                 fontWeight: FontWeight.w600,
                               ),
@@ -1414,7 +1415,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     key: const ValueKey('code-expanded'),
                     width: double.infinity,
                     color: bodyBg,
-                    padding: const EdgeInsets.fromLTRB(10, 6, 6, 10),
+                    padding: const EdgeInsets.fromLTRB(10, 4, 6, 8),
                     child: () {
                       // Desktop: enable word wrap, allow selection, no height limit, no scroll
                       // Mobile: horizontal scroll by default, or word wrap if setting enabled
@@ -1496,7 +1497,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                     key: const ValueKey('code-collapsed'),
                     width: double.infinity,
                     color: bodyBg,
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 8),
                     child: () {
                       final l10n = AppLocalizations.of(context)!;
                       final code = widget.code;
@@ -1555,7 +1556,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 Text(
                                   l10n.codeBlockCollapsedLines(hiddenLines),
                                   style: TextStyle(
-                                    fontSize: controlFontSize - 1,
+                                    fontSize: controlFontSize,
                                     height: 1.4,
                                     color: _conversationMutedColor(
                                       context,
@@ -1827,7 +1828,7 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                   context,
                                 )!.shareProviderSheetCopyButton,
                                 style: TextStyle(
-                                  fontSize: controlFontSize - 1,
+                                  fontSize: controlFontSize,
                                   color: _conversationMutedColor(context),
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -2374,7 +2375,7 @@ class AtxHeadingMd extends BlockMd {
       5 => 1.0,
       _ => 0.5,
     };
-    final base = TextStyle(fontSize: bodySize + increment);
+    final base = TextStyle(fontSize: bodySize + increment - 1.0);
     final weight = switch (level) {
       1 => FontWeight.w700,
       2 => FontWeight.w600,

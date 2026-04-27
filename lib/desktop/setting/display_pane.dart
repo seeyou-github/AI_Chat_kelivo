@@ -43,6 +43,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _AppLanguageRow(),
                   _RowDivider(),
                   _ChatFontSizeRow(),
+                  _RowDivider(),
+                  _ChatBodyFontSizeRow(),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1363,15 +1365,97 @@ class _ChatFontSizeRowState extends State<_ChatFontSizeRow> {
   }
 }
 
+class _ChatBodyFontSizeRow extends StatefulWidget {
+  const _ChatBodyFontSizeRow();
+
+  @override
+  State<_ChatBodyFontSizeRow> createState() => _ChatBodyFontSizeRowState();
+}
+
+class _ChatBodyFontSizeRowState extends State<_ChatBodyFontSizeRow> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final size = context.read<SettingsProvider>().chatBaseFontSize;
+    _controller = TextEditingController(text: _format(size));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _format(double value) {
+    final rounded = value.roundToDouble();
+    return rounded == value ? '${rounded.toInt()}' : value.toStringAsFixed(1);
+  }
+
+  void _commit(String text) {
+    final n = double.tryParse(text.trim());
+    if (n == null) return;
+    final clamped = n.clamp(10.0, 32.0).toDouble();
+    context.read<SettingsProvider>().setChatBaseFontSize(clamped);
+    _controller.text = _format(clamped);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        AppLocalizations.of(context)!.displaySettingsPageChatBaseFontSizeTitle;
+    return _LabeledRow(
+      label: label,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IntrinsicWidth(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 44, maxWidth: 88),
+              child: _BorderInput(
+                controller: _controller,
+                onSubmitted: _commit,
+                onFocusLost: _commit,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'pt',
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.7),
+              fontSize: 14,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BorderInput extends StatefulWidget {
   const _BorderInput({
     required this.controller,
     required this.onSubmitted,
     required this.onFocusLost,
+    this.keyboardType = TextInputType.number,
+    this.inputFormatters,
   });
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onFocusLost;
+  final TextInputType keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   @override
   State<_BorderInput> createState() => _BorderInputState();
 }
@@ -1426,8 +1510,10 @@ class _BorderInputState extends State<_BorderInput> {
         controller: widget.controller,
         focusNode: _focus,
         textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        keyboardType: widget.keyboardType,
+        inputFormatters:
+            widget.inputFormatters ??
+            [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(
           isDense: true,
           filled: true,

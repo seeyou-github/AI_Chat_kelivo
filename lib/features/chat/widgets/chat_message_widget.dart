@@ -1219,7 +1219,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                               defaultTargetPlatform == TargetPlatform.macOS ||
                               defaultTargetPlatform == TargetPlatform.windows ||
                               defaultTargetPlatform == TargetPlatform.linux;
-                          final double baseUser = isDesktop ? 13.5 : 15.0;
+                          final double baseUser = settings.chatBaseFontSize;
                           final conversationTextColor =
                               settings.resolveConversationTextColor(
                                 Theme.of(context).brightness,
@@ -1734,11 +1734,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     SettingsProvider settings,
   ) {
     final cs = Theme.of(context).colorScheme;
-    final bool isDesktop =
-        defaultTargetPlatform == TargetPlatform.macOS ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.linux;
-    final double baseAssistant = isDesktop ? 13.5 : 15.0;
+    final double baseAssistant = settings.chatBaseFontSize;
     final conversationTextColor = settings.resolveConversationTextColor(
       Theme.of(context).brightness,
       fallback: cs.onSurface,
@@ -2264,16 +2260,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
                                 ),
                                 child: Builder(
                                   builder: (context) {
-                                    final bool isDesktop =
-                                        defaultTargetPlatform ==
-                                            TargetPlatform.macOS ||
-                                        defaultTargetPlatform ==
-                                            TargetPlatform.windows ||
-                                        defaultTargetPlatform ==
-                                            TargetPlatform.linux;
-                                    final double baseTranslation = isDesktop
-                                        ? 14.0
-                                        : 15.5;
+                                    final double baseTranslation =
+                                        settings.chatBaseFontSize;
                                     final conversationTextColor = settings
                                         .resolveConversationTextColor(
                                           Theme.of(context).brightness,

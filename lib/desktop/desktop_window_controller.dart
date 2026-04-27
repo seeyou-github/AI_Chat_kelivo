@@ -31,11 +31,16 @@ class DesktopWindowController with WindowListener {
       return;
     }
 
-    await windowManager.ensureInitialized();
+    if (defaultTargetPlatform != TargetPlatform.windows) {
+      await windowManager.ensureInitialized();
+    }
     _attachListeners();
     // Windows custom title bar is handled in main (TitleBarStyle.hidden)
 
-    final initialSize = await _sizeMgr.getInitialSize(prefs: initialPrefs);
+    final initialSizeFuture = _sizeMgr.getInitialSize(prefs: initialPrefs);
+    final savedPosFuture = _sizeMgr.getPosition(prefs: initialPrefs);
+    final wasMaxFuture = _sizeMgr.getWindowMaximized(prefs: initialPrefs);
+    final initialSize = await initialSizeFuture;
     const minSize = Size(
       WindowSizeManager.minWindowWidth,
       WindowSizeManager.minWindowHeight,
@@ -55,11 +60,10 @@ class DesktopWindowController with WindowListener {
       title: title,
     );
 
-    final savedPos = await _sizeMgr.getPosition(prefs: initialPrefs);
-    final wasMax = await _sizeMgr.getWindowMaximized(prefs: initialPrefs);
+    final savedPos = await savedPosFuture;
+    final wasMax = await wasMaxFuture;
 
-    if (defaultTargetPlatform == TargetPlatform.windows){
-      await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
+    if (defaultTargetPlatform == TargetPlatform.windows) {
       doWhenWindowReady(() async {
         appWindow.minSize = options.minimumSize;
         appWindow.maxSize = options.maximumSize;
@@ -87,11 +91,8 @@ class DesktopWindowController with WindowListener {
             await windowManager.setPosition(savedPos);
           } catch (_) {}
         }
-      });      
+      });
     }
-
-
-    
   }
 
   void _attachListeners() {
