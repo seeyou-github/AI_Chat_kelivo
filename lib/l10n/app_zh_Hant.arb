@@ -1094,6 +1094,7 @@
   "displaySettingsPageConversationTextColorTitle": "對話介面文字顏色",
   "displaySettingsPageConversationTextColorDialogTitle": "對話介面文字顏色",
   "displaySettingsPageConversationTextColorPreview": "預覽",
+  "displaySettingsPageCodeBlockTextColorTitle": "程式碼區塊文字顏色",
   "desktopSettingsFontsTitle": "字體設定",
   "displaySettingsPageTrayTitle": "系統匣",
   "displaySettingsPageTrayShowTrayTitle": "顯示系統匣圖示",

@@ -163,6 +163,31 @@ StartupWindowPlacement GetConfiguredStartupWindowPlacement() {
   return placement;
 }
 
+POINT ResolveStartupOrigin(const StartupWindowPlacement& placement,
+                           int fallback_x,
+                           int fallback_y,
+                           int width,
+                           int height) {
+  if (placement.x.has_value() && placement.y.has_value()) {
+    return POINT{static_cast<LONG>(*placement.x), static_cast<LONG>(*placement.y)};
+  }
+
+  POINT seed_point{static_cast<LONG>(fallback_x), static_cast<LONG>(fallback_y)};
+  HMONITOR monitor = MonitorFromPoint(seed_point, MONITOR_DEFAULTTOPRIMARY);
+  MONITORINFO monitor_info{};
+  monitor_info.cbSize = sizeof(monitor_info);
+  if (!GetMonitorInfo(monitor, &monitor_info)) {
+    return seed_point;
+  }
+
+  const RECT work_area = monitor_info.rcWork;
+  const int centered_x =
+      work_area.left + ((work_area.right - work_area.left) - width) / 2;
+  const int centered_y =
+      work_area.top + ((work_area.bottom - work_area.top) - height) / 2;
+  return POINT{static_cast<LONG>(centered_x), static_cast<LONG>(centered_y)};
+}
+
 bool ResolvePreferredDarkMode() {
   const auto configured = GetConfiguredStartupDarkModePreference();
   return configured.value_or(GetSystemDarkModePreference());
@@ -299,15 +324,17 @@ bool Win32Window::Create(const std::wstring& title,
       startup_placement.height.value_or(static_cast<int>(size.height));
   start_maximized_ = startup_placement.maximized;
 
-  const POINT target_point = {static_cast<LONG>(logical_x),
-                              static_cast<LONG>(logical_y)};
+  const POINT resolved_origin = ResolveStartupOrigin(
+      startup_placement, logical_x, logical_y, logical_width, logical_height);
+
+  const POINT target_point = resolved_origin;
   HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
   HWND window = CreateWindow(
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(logical_x, scale_factor), Scale(logical_y, scale_factor),
+      Scale(resolved_origin.x, scale_factor), Scale(resolved_origin.y, scale_factor),
       Scale(logical_width, scale_factor), Scale(logical_height, scale_factor),
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 

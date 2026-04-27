@@ -1436,6 +1436,7 @@
   "displaySettingsPageConversationTextColorTitle": "Conversation Text Color",
   "displaySettingsPageConversationTextColorDialogTitle": "Conversation Text Color",
   "displaySettingsPageConversationTextColorPreview": "Preview",
+  "displaySettingsPageCodeBlockTextColorTitle": "Code Block Text Color",
   "desktopSettingsFontsTitle": "Fonts",
   "displaySettingsPageTrayTitle": "System Tray",
   "displaySettingsPageTrayShowTrayTitle": "Show tray icon",

@@ -32,6 +32,8 @@ enum _MigrationResult { noChange, applied, failed }
 class SettingsProvider extends ChangeNotifier {
   static const double _minDisplayFontSize = 10.0;
   static const double _maxDisplayFontSize = 50.0;
+  static const double _minMarkdownCodeFontSize = 5.0;
+  static const double _maxMarkdownCodeFontSize = 35.0;
   static const double _defaultChatBaseFontSize = 15.0;
   static const double _defaultMarkdownBaseFontSize = 15.0;
   static const double _defaultMarkdownCodeFontSize = 13.0;
@@ -48,6 +50,10 @@ class SettingsProvider extends ChangeNotifier {
 
   static double _clampDisplayFontSize(num value) =>
       value.clamp(_minDisplayFontSize, _maxDisplayFontSize).toDouble();
+
+  static double _clampMarkdownCodeFontSize(num value) =>
+      value.clamp(_minMarkdownCodeFontSize, _maxMarkdownCodeFontSize)
+          .toDouble();
 
   static double _clampMarkdownCodeLineHeight(num value) =>
       value.clamp(1.0, 2.5).toDouble();
@@ -193,6 +199,10 @@ class SettingsProvider extends ChangeNotifier {
       'display_conversation_text_light_color_v1';
   static const String _displayConversationTextDarkColorKey =
       'display_conversation_text_dark_color_v1';
+  static const String _displayConversationCodeTextLightColorKey =
+      'display_conversation_code_text_light_color_v1';
+  static const String _displayConversationCodeTextDarkColorKey =
+      'display_conversation_code_text_dark_color_v1';
   static const String _displayAutoScrollEnabledKey =
       'display_auto_scroll_enabled_v1';
   static const String _displayAutoScrollIdleSecondsKey =
@@ -496,7 +506,7 @@ class SettingsProvider extends ChangeNotifier {
       prefs.getDouble(_displayMarkdownBaseFontSizeKey) ??
           _defaultMarkdownBaseFontSize,
     );
-    _markdownCodeFontSize = _clampDisplayFontSize(
+    _markdownCodeFontSize = _clampMarkdownCodeFontSize(
       prefs.getDouble(_displayMarkdownCodeFontSizeKey) ??
           _defaultMarkdownCodeFontSize,
     );
@@ -531,6 +541,18 @@ class SettingsProvider extends ChangeNotifier {
     _chatBubbleHorizontalMarginFactor = _clampChatBubbleHorizontalMarginFactor(
       prefs.getDouble(_displayChatBubbleHorizontalMarginFactorKey) ??
           _defaultChatBubbleHorizontalMarginFactor,
+    );
+    _conversationTextLightColorValue = prefs.getInt(
+      _displayConversationTextLightColorKey,
+    );
+    _conversationTextDarkColorValue = prefs.getInt(
+      _displayConversationTextDarkColorKey,
+    );
+    _conversationCodeTextLightColorValue = prefs.getInt(
+      _displayConversationCodeTextLightColorKey,
+    );
+    _conversationCodeTextDarkColorValue = prefs.getInt(
+      _displayConversationCodeTextDarkColorKey,
     );
   }
 
@@ -956,7 +978,7 @@ class SettingsProvider extends ChangeNotifier {
       prefs.getDouble(_displayMarkdownBaseFontSizeKey) ??
           _defaultMarkdownBaseFontSize,
     );
-    _markdownCodeFontSize = _clampDisplayFontSize(
+    _markdownCodeFontSize = _clampMarkdownCodeFontSize(
       prefs.getDouble(_displayMarkdownCodeFontSizeKey) ??
           _defaultMarkdownCodeFontSize,
     );
@@ -993,6 +1015,12 @@ class SettingsProvider extends ChangeNotifier {
     );
     _conversationTextDarkColorValue = prefs.getInt(
       _displayConversationTextDarkColorKey,
+    );
+    _conversationCodeTextLightColorValue = prefs.getInt(
+      _displayConversationCodeTextLightColorKey,
+    );
+    _conversationCodeTextDarkColorValue = prefs.getInt(
+      _displayConversationCodeTextDarkColorKey,
     );
     _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
     _autoScrollIdleSeconds =
@@ -3111,14 +3139,24 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   double get markdownHeading6FontSize => _markdownHeading6FontSize;
   static const Color _defaultConversationTextLightColor = Color(0xFF1A1B21);
   static const Color _defaultConversationTextDarkColor = Color(0xFFF1F0F7);
+  static const Color _defaultConversationCodeTextLightColor = Color(0xFF273244);
+  static const Color _defaultConversationCodeTextDarkColor = Color(0xFFE5ECF6);
   int? _conversationTextLightColorValue;
   int? _conversationTextDarkColorValue;
+  int? _conversationCodeTextLightColorValue;
+  int? _conversationCodeTextDarkColorValue;
   Color get conversationTextLightColor =>
       _colorFromValue(_conversationTextLightColorValue) ??
       _defaultConversationTextLightColor;
   Color get conversationTextDarkColor =>
       _colorFromValue(_conversationTextDarkColorValue) ??
       _defaultConversationTextDarkColor;
+  Color get conversationCodeTextLightColor =>
+      _colorFromValue(_conversationCodeTextLightColorValue) ??
+      _defaultConversationCodeTextLightColor;
+  Color get conversationCodeTextDarkColor =>
+      _colorFromValue(_conversationCodeTextDarkColorValue) ??
+      _defaultConversationCodeTextDarkColor;
   Color resolveConversationTextColor(
     Brightness brightness, {
     Color? fallback,
@@ -3131,6 +3169,20 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     return _colorFromValue(_conversationTextLightColorValue) ??
         fallback ??
         _defaultConversationTextLightColor;
+  }
+
+  Color resolveConversationCodeTextColor(
+    Brightness brightness, {
+    Color? fallback,
+  }) {
+    if (brightness == Brightness.dark) {
+      return _colorFromValue(_conversationCodeTextDarkColorValue) ??
+          fallback ??
+          _defaultConversationCodeTextDarkColor;
+    }
+    return _colorFromValue(_conversationCodeTextLightColorValue) ??
+        fallback ??
+        _defaultConversationCodeTextLightColor;
   }
 
   static Color? _colorFromValue(int? value) {
@@ -3169,7 +3221,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   }
 
   Future<void> setMarkdownCodeFontSize(double size) async {
-    final next = _clampDisplayFontSize(size);
+    final next = _clampMarkdownCodeFontSize(size);
     if (_markdownCodeFontSize == next) return;
     _markdownCodeFontSize = next;
     notifyListeners();
@@ -3274,6 +3326,39 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     _conversationTextLightColorValue = null;
     notifyListeners();
     await prefs.remove(_displayConversationTextLightColorKey);
+  }
+
+  Future<void> setConversationCodeTextLightColor(Color color) async {
+    final value = color.toARGB32();
+    if (_conversationCodeTextLightColorValue == value) return;
+    _conversationCodeTextLightColorValue = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayConversationCodeTextLightColorKey, value);
+  }
+
+  Future<void> setConversationCodeTextDarkColor(Color color) async {
+    final value = color.toARGB32();
+    if (_conversationCodeTextDarkColorValue == value) return;
+    _conversationCodeTextDarkColorValue = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayConversationCodeTextDarkColorKey, value);
+  }
+
+  Future<void> resetConversationCodeTextColor(Brightness brightness) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (brightness == Brightness.dark) {
+      if (_conversationCodeTextDarkColorValue == null) return;
+      _conversationCodeTextDarkColorValue = null;
+      notifyListeners();
+      await prefs.remove(_displayConversationCodeTextDarkColorKey);
+      return;
+    }
+    if (_conversationCodeTextLightColorValue == null) return;
+    _conversationCodeTextLightColorValue = null;
+    notifyListeners();
+    await prefs.remove(_displayConversationCodeTextLightColorKey);
   }
 
   // Display: auto-scroll back to bottom toggle
@@ -3811,6 +3896,10 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._markdownHeading6FontSize = _markdownHeading6FontSize;
     copy._conversationTextLightColorValue = _conversationTextLightColorValue;
     copy._conversationTextDarkColorValue = _conversationTextDarkColorValue;
+    copy._conversationCodeTextLightColorValue =
+        _conversationCodeTextLightColorValue;
+    copy._conversationCodeTextDarkColorValue =
+        _conversationCodeTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;
     copy._autoScrollIdleSeconds = _autoScrollIdleSeconds;
     copy._chatBubbleHorizontalMarginFactor =

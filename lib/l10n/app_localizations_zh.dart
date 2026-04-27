@@ -3310,6 +3310,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageConversationTextColorTitle => '对话界面文字颜色';
 
   @override
+  String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
+
+  @override
   String get displaySettingsPageConversationTextColorDialogTitle =>
       '对话界面文字颜色';
 
@@ -7648,6 +7651,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageConversationTextColorTitle => '对话界面文字颜色';
 
   @override
+  String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
+
+  @override
   String get displaySettingsPageConversationTextColorDialogTitle =>
       '对话界面文字颜色';
 
@@ -11982,6 +11988,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageConversationTextColorTitle => '對話介面文字顏色';
+
+  @override
+  String get displaySettingsPageCodeBlockTextColorTitle => '程式碼區塊文字顏色';
 
   @override
   String get displaySettingsPageConversationTextColorDialogTitle =>

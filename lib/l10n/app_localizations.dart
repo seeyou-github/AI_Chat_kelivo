@@ -6428,6 +6428,12 @@ abstract class AppLocalizations {
   /// **'Conversation Text Color'**
   String get displaySettingsPageConversationTextColorTitle;
 
+  /// No description provided for @displaySettingsPageCodeBlockTextColorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Code Block Text Color'**
+  String get displaySettingsPageCodeBlockTextColorTitle;
+
   /// No description provided for @displaySettingsPageConversationTextColorDialogTitle.
   ///
   /// In en, this message translates to:

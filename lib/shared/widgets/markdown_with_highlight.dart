@@ -59,6 +59,30 @@ Color _conversationAccentColor(BuildContext context, {Color? base}) {
   return Color.lerp(color, primary, 0.52) ?? primary;
 }
 
+Color _conversationCodeTextColor(BuildContext context, {Color? fallback}) {
+  final theme = Theme.of(context);
+  return context.read<SettingsProvider>().resolveConversationCodeTextColor(
+    theme.brightness,
+    fallback: fallback ?? theme.colorScheme.onSurface,
+  );
+}
+
+TextStyle _markdownResolvedTextStyle(
+  BuildContext context, {
+  TextStyle? style,
+  Color? color,
+}) {
+  final settings = context.read<SettingsProvider>();
+  final resolved = style ?? const TextStyle();
+  return resolved.copyWith(
+    fontSize: resolved.fontSize ?? settings.markdownBaseFontSize,
+    height: resolved.height ?? 1.55,
+    color: color ?? resolved.color ?? _conversationBaseColor(context),
+    fontFamilyFallback:
+        resolved.fontFamilyFallback ?? getPlatformFontFallback(),
+  );
+}
+
 double _markdownBaseFontSize(
   BuildContext context, {
   TextStyle? preferredStyle,
@@ -411,6 +435,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       tableBuilder: (ctx, rows, style, cfg) {
         final cs = Theme.of(ctx).colorScheme;
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        final tableFontSize = _markdownCodeFontSize(
+          ctx,
+          preferredStyle: style,
+        );
         final borderColor = cs.outlineVariant.withValues(
           alpha: isDark ? 0.22 : 0.28,
         );
@@ -419,15 +447,19 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           cs.primary.withValues(alpha: isDark ? 0.14 : 0.08),
           cs.surface,
         );
-        final headerStyle = (style).copyWith(
-          fontWeight: FontWeight.w600,
-          // Ensure header text adapts to theme changes
+        final headerStyle = _markdownResolvedTextStyle(
+          ctx,
+          style: style,
           color: _conversationEmphasisColor(ctx, base: conversationTextColor),
+        ).copyWith(
+          fontSize: tableFontSize,
+          fontWeight: FontWeight.w600,
         );
-        final cellStyle = (style).copyWith(
-          // Ensure cell text adapts to theme changes
+        final cellStyle = _markdownResolvedTextStyle(
+          ctx,
+          style: style,
           color: conversationTextColor,
-        );
+        ).copyWith(fontSize: tableFontSize);
 
         // Count max columns to pad missing cells
         int maxCol = 0;
@@ -560,7 +592,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   ),
                   child: DefaultTextStyle.merge(
                     // Ensure any nested spans fallback to current onSurface instead of stale defaults
-                    style: TextStyle(color: conversationTextColor),
+                    style: TextStyle(
+                      color: conversationTextColor,
+                      fontSize: tableFontSize,
+                    ),
                     child: table,
                   ),
                 ),
@@ -639,7 +674,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: DefaultTextStyle.merge(
-                  style: TextStyle(color: _conversationBaseColor(ctx)),
+                  style: TextStyle(
+                    color: _conversationBaseColor(ctx),
+                    fontSize: tableFontSize,
+                  ),
                   child: table,
                 ),
               ),
@@ -674,7 +712,12 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
               fontFamily: codeFontFamily,
               fontSize: codeFontSize,
               height: 1.4,
-            ).copyWith(color: csCtx.onSurface),
+            ).copyWith(
+              color: _conversationCodeTextColor(
+                ctx,
+                fallback: csCtx.onSurface,
+              ),
+            ),
             softWrap: true,
             overflow: TextOverflow.visible,
           ),
@@ -720,6 +763,19 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       m['root'] = const TextStyle(backgroundColor: Colors.transparent);
     }
     return m;
+  }
+
+  static Map<String, TextStyle> _codeTextTheme(
+    Map<String, TextStyle> base,
+    Color color,
+  ) {
+    final transparent = _transparentBgTheme(base);
+    return transparent.map((key, value) {
+      return MapEntry(
+        key,
+        value.copyWith(color: color, backgroundColor: Colors.transparent),
+      );
+    });
   }
 
   static String? _normalizeLanguage(String? lang) {
@@ -1148,6 +1204,10 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
     final settings = context.watch<SettingsProvider>();
     final codeFontSize = _markdownCodeFontSize(context, fallback: 13.0);
     final codeLineHeight = _markdownCodeLineHeight(context);
+    final codeTextColor = _conversationCodeTextColor(
+      context,
+      fallback: _conversationBaseColor(context),
+    );
     const double controlFontSize = 14.0;
     final neutralizedMedia = MediaQuery.of(
       context,
@@ -1428,13 +1488,17 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               ) ??
                               'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
+                            MarkdownWithCodeHighlight._codeTextTheme(
+                              isDark ? atomOneDarkReasonableTheme : githubTheme,
+                              codeTextColor,
+                            ),
                           ),
                           padding: EdgeInsets.zero,
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
                             fontSize: codeFontSize,
                             height: codeLineHeight,
+                            color: codeTextColor,
                           ),
                         );
                       }
@@ -1452,13 +1516,17 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               ) ??
                               'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
+                            MarkdownWithCodeHighlight._codeTextTheme(
+                              isDark ? atomOneDarkReasonableTheme : githubTheme,
+                              codeTextColor,
+                            ),
                           ),
                           padding: EdgeInsets.zero,
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
                             fontSize: codeFontSize,
                             height: codeLineHeight,
+                            color: codeTextColor,
                           ),
                         );
                       }
@@ -1475,13 +1543,17 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               ) ??
                               'plaintext',
                           theme: MarkdownWithCodeHighlight._transparentBgTheme(
-                            isDark ? atomOneDarkReasonableTheme : githubTheme,
+                            MarkdownWithCodeHighlight._codeTextTheme(
+                              isDark ? atomOneDarkReasonableTheme : githubTheme,
+                              codeTextColor,
+                            ),
                           ),
                           padding: EdgeInsets.zero,
                           textStyle: TextStyle(
                             fontFamily: codeFontFamily,
                             fontSize: codeFontSize,
                             height: codeLineHeight,
+                            color: codeTextColor,
                           ),
                         ),
                       );
@@ -1537,7 +1609,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                 fontFamily: codeFontFamily,
                                 fontSize: codeFontSize,
                                 height: codeLineHeight,
-                                color: _conversationBaseColor(context),
+                                color: codeTextColor,
                               ),
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,
@@ -1554,6 +1626,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                                     height: 1.4,
                                     color: _conversationMutedColor(
                                       context,
+                                      base: codeTextColor,
                                       alpha: 0.55,
                                     ),
                                   ),
@@ -1640,6 +1713,10 @@ class _MermaidBlockState extends State<_MermaidBlock> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final codeFontSize = _markdownCodeFontSize(context, fallback: 13.0);
     final codeLineHeight = _markdownCodeLineHeight(context);
+    final codeTextColor = _conversationCodeTextColor(
+      context,
+      fallback: _conversationBaseColor(context),
+    );
     const double controlFontSize = 14.0;
     final neutralizedMedia = MediaQuery.of(
       context,
@@ -1933,16 +2010,20 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                   language: 'plaintext',
                                   theme:
                                       MarkdownWithCodeHighlight._transparentBgTheme(
-                                        Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? atomOneDarkReasonableTheme
-                                            : githubTheme,
+                                        MarkdownWithCodeHighlight._codeTextTheme(
+                                          Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? atomOneDarkReasonableTheme
+                                              : githubTheme,
+                                          codeTextColor,
+                                        ),
                                       ),
                                   padding: EdgeInsets.zero,
                                   textStyle: TextStyle(
                                     fontFamily: 'monospace',
                                     fontSize: codeFontSize,
                                     height: codeLineHeight,
+                                    color: codeTextColor,
                                   ),
                                 ),
                               );
@@ -1976,16 +2057,20 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                         language: 'plaintext',
                                         theme:
                                             MarkdownWithCodeHighlight._transparentBgTheme(
-                                              Theme.of(context).brightness ==
-                                                      Brightness.dark
-                                                  ? atomOneDarkReasonableTheme
-                                                  : githubTheme,
+                                              MarkdownWithCodeHighlight._codeTextTheme(
+                                                Theme.of(context).brightness ==
+                                                        Brightness.dark
+                                                    ? atomOneDarkReasonableTheme
+                                                    : githubTheme,
+                                                codeTextColor,
+                                              ),
                                             ),
                                         padding: EdgeInsets.zero,
                                         textStyle: TextStyle(
                                           fontFamily: 'monospace',
                                           fontSize: codeFontSize,
                                           height: codeLineHeight,
+                                          color: codeTextColor,
                                         ),
                                       ),
                                     ),
@@ -2202,12 +2287,7 @@ class InlineLatexScrollableMd extends InlineMd {
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
       mathStyle: MathStyle.text,
-      style: () {
-        final base = (config.style ?? const TextStyle());
-        final baseSize = base.fontSize ?? 15.5;
-        // Slightly enlarge inline math for readability
-        return base.copyWith(fontSize: baseSize * 1.2);
-      }(),
+      style: _markdownResolvedTextStyle(context, style: config.style),
     );
     // Wrap in horizontal scroll to prevent line overflow; no extra background
     final w = LayoutBuilder(
@@ -2244,11 +2324,7 @@ class InlineLatexDollarScrollableMd extends InlineMd {
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
       mathStyle: MathStyle.text,
-      style: () {
-        final base = (config.style ?? const TextStyle());
-        final baseSize = base.fontSize ?? 15.5;
-        return base.copyWith(fontSize: baseSize * 1.2);
-      }(),
+      style: _markdownResolvedTextStyle(context, style: config.style),
     );
     final w = LayoutBuilder(
       builder: (context, constraints) {
@@ -2283,11 +2359,7 @@ class InlineLatexParenScrollableMd extends InlineMd {
     final math = MarkdownWithCodeHighlight._renderMath(
       body,
       mathStyle: MathStyle.text,
-      style: () {
-        final base = (config.style ?? const TextStyle());
-        final baseSize = base.fontSize ?? 15.5;
-        return base.copyWith(fontSize: baseSize * 1.2);
-      }(),
+      style: _markdownResolvedTextStyle(context, style: config.style),
     );
     final w = LayoutBuilder(
       builder: (context, constraints) {
@@ -2455,8 +2527,10 @@ class LabelValueLineMd extends InlineMd {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     // 继承基础样式，确保字间距/行高一致
-    final base =
-        (config.style ?? t.bodyMedium ?? const TextStyle(fontSize: 14));
+    final base = _markdownResolvedTextStyle(
+      context,
+      style: config.style ?? t.bodyMedium,
+    );
     final labelStyle = base.copyWith(
       fontWeight: FontWeight.w700, // 与 ** 加粗视觉一致
       color: _conversationEmphasisColor(context),

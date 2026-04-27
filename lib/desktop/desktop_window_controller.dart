@@ -92,13 +92,7 @@ class DesktopWindowController with WindowListener {
     // Throttle saves while resizing to reduce jank
     _resizeDebounce?.cancel();
     _resizeDebounce = Timer(_debounceDuration, () async {
-      try {
-        final isMax = await windowManager.isMaximized();
-        if (!isMax) {
-          final s = await windowManager.getSize();
-          await _sizeMgr.setSize(s);
-        }
-      } catch (_) {}
+      await _persistWindowBounds();
     });
   }
 
@@ -107,10 +101,7 @@ class DesktopWindowController with WindowListener {
     // Debounce position persistence during drag to avoid main-isolate IO on every move
     _moveDebounce?.cancel();
     _moveDebounce = Timer(_debounceDuration, () async {
-      try {
-        final offset = await windowManager.getPosition();
-        await _sizeMgr.setPosition(offset);
-      } catch (_) {}
+      await _persistWindowBounds();
     });
   }
 
@@ -148,6 +139,25 @@ class DesktopWindowController with WindowListener {
     try {
       await _sizeMgr.setWindowMaximized(false);
       final offset = await windowManager.getPosition();
+      await _sizeMgr.setPosition(offset);
+    } catch (_) {}
+  }
+
+  @override
+  void onWindowClose() async {
+    _moveDebounce?.cancel();
+    _resizeDebounce?.cancel();
+    await _persistWindowBounds();
+  }
+
+  Future<void> _persistWindowBounds() async {
+    try {
+      final isMax = await windowManager.isMaximized();
+      await _sizeMgr.setWindowMaximized(isMax);
+      if (isMax) return;
+      final size = await windowManager.getSize();
+      final offset = await windowManager.getPosition();
+      await _sizeMgr.setSize(size);
       await _sizeMgr.setPosition(offset);
     } catch (_) {}
   }

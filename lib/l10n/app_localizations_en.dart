@@ -3450,6 +3450,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Conversation Text Color';
 
   @override
+  String get displaySettingsPageCodeBlockTextColorTitle =>
+      'Code Block Text Color';
+
+  @override
   String get displaySettingsPageConversationTextColorDialogTitle =>
       'Conversation Text Color';
 

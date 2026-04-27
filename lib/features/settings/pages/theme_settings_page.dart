@@ -95,6 +95,8 @@ class ThemeSettingsPage extends StatelessWidget {
               ],
               _iosDivider(context),
               _conversationTextColorRow(context),
+              _iosDivider(context),
+              _conversationCodeTextColorRow(context),
             ],
           ),
         ],
@@ -124,6 +126,38 @@ Widget _conversationTextColorRow(BuildContext context) {
                 ),
               ),
               const ConversationTextColorPreview(compact: true),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _conversationCodeTextColorRow(BuildContext context) {
+  final cs = Theme.of(context).colorScheme;
+  final l10n = AppLocalizations.of(context)!;
+  return _TactileRow(
+    onTap: () => showConversationCodeBlockTextColorDialog(context),
+    builder: (pressed) {
+      final baseColor = cs.onSurface.withValues(alpha: 0.9);
+      return _AnimatedPressColor(
+        pressed: pressed,
+        base: baseColor,
+        builder: (c) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.displaySettingsPageCodeBlockTextColorTitle,
+                  style: TextStyle(fontSize: 15, color: c),
+                ),
+              ),
+              const ConversationTextColorPreview(
+                compact: true,
+                target: ConversationColorTarget.codeBlock,
+              ),
             ],
           ),
         ),

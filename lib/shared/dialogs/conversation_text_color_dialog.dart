@@ -7,12 +7,26 @@ import '../../core/providers/settings_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/theme_factory.dart' show getPlatformFontFallback;
 
+enum ConversationColorTarget { text, codeBlock }
+
 enum _ConversationTextTone { light, dark }
 
-Future<void> showConversationTextColorDialog(BuildContext context) async {
+Future<void> showConversationTextColorDialog(
+  BuildContext context, {
+  ConversationColorTarget target = ConversationColorTarget.text,
+}) async {
   await showDialog<void>(
     context: context,
-    builder: (_) => const _ConversationTextColorDialog(),
+    builder: (_) => _ConversationTextColorDialog(target: target),
+  );
+}
+
+Future<void> showConversationCodeBlockTextColorDialog(
+  BuildContext context,
+) async {
+  await showConversationTextColorDialog(
+    context,
+    target: ConversationColorTarget.codeBlock,
   );
 }
 
@@ -21,22 +35,33 @@ class ConversationTextColorPreview extends StatelessWidget {
     super.key,
     this.showLabels = false,
     this.compact = false,
+    this.target = ConversationColorTarget.text,
   });
 
   final bool showLabels;
   final bool compact;
+  final ConversationColorTarget target;
 
   @override
   Widget build(BuildContext context) {
     final sp = context.watch<SettingsProvider>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final active = sp.resolveConversationTextColor(
-      theme.brightness,
-      fallback: theme.colorScheme.onSurface,
-    );
-    final light = sp.conversationTextLightColor;
-    final dark = sp.conversationTextDarkColor;
+    final active = target == ConversationColorTarget.codeBlock
+        ? sp.resolveConversationCodeTextColor(
+            theme.brightness,
+            fallback: theme.colorScheme.onSurface,
+          )
+        : sp.resolveConversationTextColor(
+            theme.brightness,
+            fallback: theme.colorScheme.onSurface,
+          );
+    final light = target == ConversationColorTarget.codeBlock
+        ? sp.conversationCodeTextLightColor
+        : sp.conversationTextLightColor;
+    final dark = target == ConversationColorTarget.codeBlock
+        ? sp.conversationCodeTextDarkColor
+        : sp.conversationTextDarkColor;
     final borderColor = theme.colorScheme.outlineVariant.withValues(
       alpha: 0.24,
     );
@@ -124,7 +149,9 @@ class ConversationTextColorPreview extends StatelessWidget {
 }
 
 class _ConversationTextColorDialog extends StatefulWidget {
-  const _ConversationTextColorDialog();
+  const _ConversationTextColorDialog({required this.target});
+
+  final ConversationColorTarget target;
 
   @override
   State<_ConversationTextColorDialog> createState() =>
@@ -142,8 +169,12 @@ class _ConversationTextColorDialogState
   void initState() {
     super.initState();
     final sp = context.read<SettingsProvider>();
-    _lightColor = sp.conversationTextLightColor;
-    _darkColor = sp.conversationTextDarkColor;
+    _lightColor = widget.target == ConversationColorTarget.codeBlock
+        ? sp.conversationCodeTextLightColor
+        : sp.conversationTextLightColor;
+    _darkColor = widget.target == ConversationColorTarget.codeBlock
+        ? sp.conversationCodeTextDarkColor
+        : sp.conversationTextDarkColor;
   }
 
   @override
@@ -163,6 +194,7 @@ class _ConversationTextColorDialogState
     final current = _tone == _ConversationTextTone.dark
         ? _darkColor
         : _lightColor;
+    final isCodeTarget = widget.target == ConversationColorTarget.codeBlock;
     final hsv = HSVColor.fromColor(current);
     final previewBg = _tone == _ConversationTextTone.dark
         ? const Color(0xFF121214)
@@ -177,7 +209,11 @@ class _ConversationTextColorDialogState
     final previewAccent = Color.lerp(previewText, cs.primary, 0.52) ?? cs.primary;
 
     return AlertDialog(
-      title: Text(l10n.displaySettingsPageConversationTextColorDialogTitle),
+      title: Text(
+        isCodeTarget
+            ? l10n.displaySettingsPageCodeBlockTextColorTitle
+            : l10n.displaySettingsPageConversationTextColorDialogTitle,
+      ),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -201,84 +237,26 @@ class _ConversationTextColorDialogState
               },
             ),
             const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: previewBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.22),
-                ),
-              ),
-              child: DefaultTextStyle(
-                style: TextStyle(
-                  color: previewText,
-                  fontSize: 15,
-                  height: 1.45,
-                  fontFamilyFallback: getPlatformFontFallback(),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.displaySettingsPageConversationTextColorPreview,
-                      style: TextStyle(
-                        color: previewSoft,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Preview text / 预览文字'),
-                    const SizedBox(height: 6),
-                    RichText(
-                      text: TextSpan(
-                        style: TextStyle(
-                          color: previewText,
-                          fontSize: 15,
-                          height: 1.45,
-                          fontFamilyFallback: getPlatformFontFallback(),
-                        ),
-                        children: [
-                          TextSpan(
-                            text: 'Bold',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: previewStrong,
-                            ),
-                          ),
-                          const TextSpan(text: '  •  '),
-                          TextSpan(
-                            text: 'Emphasis',
-                            style: TextStyle(
-                              fontStyle: FontStyle.italic,
-                              color: previewStrong,
-                            ),
-                          ),
-                          const TextSpan(text: '  •  '),
-                          TextSpan(
-                            text: 'Link',
-                            style: TextStyle(
-                              color: previewAccent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      _hex(current),
-                      style: TextStyle(
-                        color: previewStrong,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            isCodeTarget
+                ? _buildCodePreviewCard(
+                    l10n: l10n,
+                    cs: cs,
+                    previewBg: previewBg,
+                    previewText: previewText,
+                    previewSoft: previewSoft,
+                    previewStrong: previewStrong,
+                    current: current,
+                  )
+                : _buildTextPreviewCard(
+                    l10n: l10n,
+                    cs: cs,
+                    previewBg: previewBg,
+                    previewText: previewText,
+                    previewSoft: previewSoft,
+                    previewStrong: previewStrong,
+                    previewAccent: previewAccent,
+                    current: current,
+                  ),
             const SizedBox(height: 14),
             _HsvSliderRow(
               label: 'H',
@@ -317,12 +295,20 @@ class _ConversationTextColorDialogState
             final toneBrightness = _tone == _ConversationTextTone.dark
                 ? Brightness.dark
                 : Brightness.light;
-            sp.resetConversationTextColor(toneBrightness);
+            if (isCodeTarget) {
+              sp.resetConversationCodeTextColor(toneBrightness);
+            } else {
+              sp.resetConversationTextColor(toneBrightness);
+            }
             setState(() {
               if (_tone == _ConversationTextTone.dark) {
-                _darkColor = sp.conversationTextDarkColor;
+                _darkColor = isCodeTarget
+                    ? sp.conversationCodeTextDarkColor
+                    : sp.conversationTextDarkColor;
               } else {
-                _lightColor = sp.conversationTextLightColor;
+                _lightColor = isCodeTarget
+                    ? sp.conversationCodeTextLightColor
+                    : sp.conversationTextLightColor;
               }
             });
           },
@@ -335,8 +321,13 @@ class _ConversationTextColorDialogState
         FilledButton(
           onPressed: () async {
             final sp = context.read<SettingsProvider>();
-            await sp.setConversationTextLightColor(_lightColor);
-            await sp.setConversationTextDarkColor(_darkColor);
+            if (isCodeTarget) {
+              await sp.setConversationCodeTextLightColor(_lightColor);
+              await sp.setConversationCodeTextDarkColor(_darkColor);
+            } else {
+              await sp.setConversationTextLightColor(_lightColor);
+              await sp.setConversationTextDarkColor(_darkColor);
+            }
             if (!mounted) return;
             Navigator.of(context).pop();
           },
@@ -354,6 +345,205 @@ class _ConversationTextColorDialogState
         _lightColor = color;
       }
     });
+  }
+
+  Widget _buildTextPreviewCard({
+    required AppLocalizations l10n,
+    required ColorScheme cs,
+    required Color previewBg,
+    required Color previewText,
+    required Color previewSoft,
+    required Color previewStrong,
+    required Color previewAccent,
+    required Color current,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: previewBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
+      ),
+      child: DefaultTextStyle(
+        style: TextStyle(
+          color: previewText,
+          fontSize: 15,
+          height: 1.45,
+          fontFamilyFallback: getPlatformFontFallback(),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.displaySettingsPageConversationTextColorPreview,
+              style: TextStyle(
+                color: previewSoft,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text('Preview text'),
+            const SizedBox(height: 6),
+            RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: previewText,
+                  fontSize: 15,
+                  height: 1.45,
+                  fontFamilyFallback: getPlatformFontFallback(),
+                ),
+                children: [
+                  TextSpan(
+                    text: 'Bold',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: previewStrong,
+                    ),
+                  ),
+                  const TextSpan(text: '  ·  '),
+                  TextSpan(
+                    text: 'Emphasis',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: previewStrong,
+                    ),
+                  ),
+                  const TextSpan(text: '  ·  '),
+                  TextSpan(
+                    text: 'Link',
+                    style: TextStyle(
+                      color: previewAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _hex(current),
+              style: TextStyle(
+                color: previewStrong,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCodePreviewCard({
+    required AppLocalizations l10n,
+    required ColorScheme cs,
+    required Color previewBg,
+    required Color previewText,
+    required Color previewSoft,
+    required Color previewStrong,
+    required Color current,
+  }) {
+    final headerBg = Color.alphaBlend(
+      cs.primary.withValues(alpha: 0.12),
+      previewBg,
+    );
+    final bodyBg = Color.alphaBlend(
+      cs.primary.withValues(alpha: 0.04),
+      previewBg,
+    );
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: previewBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.22)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            l10n.displaySettingsPageConversationTextColorPreview,
+            style: TextStyle(
+              color: previewSoft,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.20),
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    color: headerBg,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'dart',
+                          style: TextStyle(
+                            color: previewStrong,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            height: 1.0,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          l10n.shareProviderSheetCopyButton,
+                          style: TextStyle(
+                            color: previewSoft,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: double.infinity,
+                    color: bodyBg,
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                    child: Text(
+                      'final answer = 42;\nprint(answer);',
+                      style: TextStyle(
+                        color: previewText,
+                        fontSize: 13,
+                        height: 1.35,
+                        fontFamily: 'monospace',
+                        fontFamilyFallback: getPlatformFontFallback(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            _hex(current),
+            style: TextStyle(
+              color: previewStrong,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

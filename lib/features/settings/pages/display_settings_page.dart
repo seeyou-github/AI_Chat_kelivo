@@ -998,9 +998,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
       context: context,
       title: _markdownCodeFontSizeLabel(context),
       value: settings.markdownCodeFontSize,
-      min: 10,
-      max: 50,
-      divisions: 40,
+      min: 5,
+      max: 35,
+      divisions: 30,
       valueTextBuilder: (value) => '${value.toStringAsFixed(0)}pt',
       onChanged: settings.setMarkdownCodeFontSize,
       previewBuilder: (ctx, value) => Text(

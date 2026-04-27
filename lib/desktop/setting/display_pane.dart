@@ -25,6 +25,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ConversationTextColorRow(),
                   _RowDivider(),
+                  _ConversationCodeTextColorRow(),
+                  _RowDivider(),
                   _ToggleRowPureBackground(),
                   _RowDivider(),
                   _ChatMessageBackgroundRow(),
@@ -401,6 +403,24 @@ class _ConversationTextColorRow extends StatelessWidget {
       trailing: GestureDetector(
         onTap: () => showConversationTextColorDialog(context),
         child: const ConversationTextColorPreview(showLabels: true),
+      ),
+    );
+  }
+}
+
+class _ConversationCodeTextColorRow extends StatelessWidget {
+  const _ConversationCodeTextColorRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _LabeledRow(
+      label: l10n.displaySettingsPageCodeBlockTextColorTitle,
+      trailing: GestureDetector(
+        onTap: () => showConversationCodeBlockTextColorDialog(context),
+        child: const ConversationTextColorPreview(
+          showLabels: true,
+          target: ConversationColorTarget.codeBlock,
+        ),
       ),
     );
   }
@@ -1412,9 +1432,9 @@ class _MarkdownFontSettingsSection extends StatelessWidget {
         _DesktopSliderRow(
           label: l10n.displaySettingsPageMarkdownCodeFontSizeTitle,
           value: settings.markdownCodeFontSize,
-          min: 10,
-          max: 50,
-          divisions: 40,
+          min: 5,
+          max: 35,
+          divisions: 30,
           valueText: '${settings.markdownCodeFontSize.toStringAsFixed(0)}pt',
           onChanged: (value) {
             provider.setMarkdownCodeFontSize(value);
