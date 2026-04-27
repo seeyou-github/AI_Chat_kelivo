@@ -3388,6 +3388,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopDisplaySettingsTopicPositionRight => 'Right';
 
   @override
+  String get displaySettingsPageChatBubbleHorizontalMarginTitle =>
+      'Chat Bubble Side Margin';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle =>
       'Automatically create a new chat on launch';
 

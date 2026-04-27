@@ -42,12 +42,21 @@ class SettingsProvider extends ChangeNotifier {
   static const double _defaultMarkdownH4FontSize = 14.0;
   static const double _defaultMarkdownH5FontSize = 13.0;
   static const double _defaultMarkdownH6FontSize = 12.0;
+  static const double _defaultChatBubbleHorizontalMarginFactor = 0.05;
+  static const double _minChatBubbleHorizontalMarginFactor = 0.0;
+  static const double _maxChatBubbleHorizontalMarginFactor = 0.15;
 
   static double _clampDisplayFontSize(num value) =>
       value.clamp(_minDisplayFontSize, _maxDisplayFontSize).toDouble();
 
   static double _clampMarkdownCodeLineHeight(num value) =>
       value.clamp(1.0, 2.5).toDouble();
+
+  static double _clampChatBubbleHorizontalMarginFactor(num value) =>
+      value.clamp(
+        _minChatBubbleHorizontalMarginFactor,
+        _maxChatBubbleHorizontalMarginFactor,
+      ).toDouble();
 
   static const String _providersOrderKey = 'providers_order_v1';
   static const String _providerGroupsKey =
@@ -218,6 +227,8 @@ class SettingsProvider extends ChangeNotifier {
       'display_use_pure_background_v1';
   static const String _displayChatMessageBackgroundStyleKey =
       'display_chat_message_background_style_v1';
+  static const String _displayChatBubbleHorizontalMarginFactorKey =
+      'display_chat_bubble_horizontal_margin_factor_v1';
   // Network request logging (debug)
   static const String _requestLogEnabledKey = 'request_log_enabled_v1';
   // Flutter runtime logging (debug)
@@ -516,6 +527,10 @@ class SettingsProvider extends ChangeNotifier {
     _markdownHeading6FontSize = _clampDisplayFontSize(
       prefs.getDouble(_displayMarkdownHeadingH6FontSizeKey) ??
           _defaultMarkdownH6FontSize,
+    );
+    _chatBubbleHorizontalMarginFactor = _clampChatBubbleHorizontalMarginFactor(
+      prefs.getDouble(_displayChatBubbleHorizontalMarginFactorKey) ??
+          _defaultChatBubbleHorizontalMarginFactor,
     );
   }
 
@@ -984,6 +999,10 @@ class SettingsProvider extends ChangeNotifier {
         prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
     _chatBackgroundMaskStrength =
         prefs.getDouble(_displayChatBackgroundMaskStrengthKey) ?? 1.0;
+    _chatBubbleHorizontalMarginFactor = _clampChatBubbleHorizontalMarginFactor(
+      prefs.getDouble(_displayChatBubbleHorizontalMarginFactorKey) ??
+          _defaultChatBubbleHorizontalMarginFactor,
+    );
     final pureBgPref = prefs.getBool(_displayUsePureBackgroundKey);
     if (pureBgPref == null) {
       final isDesktop =
@@ -3298,6 +3317,33 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     );
   }
 
+  double _chatBubbleHorizontalMarginFactor =
+      _defaultChatBubbleHorizontalMarginFactor;
+  double get chatBubbleHorizontalMarginFactor =>
+      _chatBubbleHorizontalMarginFactor;
+  double get chatBubbleMaxWidthFactor =>
+      (1.0 - (_chatBubbleHorizontalMarginFactor * 2))
+          .clamp(0.4, 1.0)
+          .toDouble();
+
+  double chatBubbleHorizontalPaddingForWidth(double width) {
+    return (width * _chatBubbleHorizontalMarginFactor)
+        .clamp(0.0, width * 0.25)
+        .toDouble();
+  }
+
+  Future<void> setChatBubbleHorizontalMarginFactor(double factor) async {
+    final next = _clampChatBubbleHorizontalMarginFactor(factor);
+    if ((_chatBubbleHorizontalMarginFactor - next).abs() < 0.0001) return;
+    _chatBubbleHorizontalMarginFactor = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble(
+      _displayChatBubbleHorizontalMarginFactorKey,
+      _chatBubbleHorizontalMarginFactor,
+    );
+  }
+
   // Display: inline $...$ LaTeX rendering
   bool _enableDollarLatex = true;
   bool get enableDollarLatex => _enableDollarLatex;
@@ -3767,6 +3813,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._conversationTextDarkColorValue = _conversationTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;
     copy._autoScrollIdleSeconds = _autoScrollIdleSeconds;
+    copy._chatBubbleHorizontalMarginFactor =
+        _chatBubbleHorizontalMarginFactor;
     copy._enableDollarLatex = _enableDollarLatex;
     copy._enableMathRendering = _enableMathRendering;
     copy._enableUserMarkdown = _enableUserMarkdown;

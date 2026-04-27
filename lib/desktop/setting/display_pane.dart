@@ -30,6 +30,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ChatMessageBackgroundRow(),
                   _RowDivider(),
                   _TopicPositionRow(),
+                  _RowDivider(),
+                  _ChatBubbleHorizontalMarginRow(),
                 ],
               ),
               const SizedBox(height: 16),
@@ -1318,6 +1320,30 @@ class _ChatFontSizeRow extends StatelessWidget {
       valueText: '${(scale * 100).round()}%',
       onChanged: (value) {
         context.read<SettingsProvider>().setChatFontScale(value);
+      },
+    );
+  }
+}
+
+class _ChatBubbleHorizontalMarginRow extends StatelessWidget {
+  const _ChatBubbleHorizontalMarginRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<SettingsProvider>();
+    final percent = settings.chatBubbleHorizontalMarginFactor * 100;
+    return _DesktopSliderRow(
+      label: l10n.displaySettingsPageChatBubbleHorizontalMarginTitle,
+      value: percent,
+      min: 0,
+      max: 15,
+      divisions: 30,
+      valueText: '${percent.toStringAsFixed(1)}%',
+      onChanged: (value) {
+        context.read<SettingsProvider>().setChatBubbleHorizontalMarginFactor(
+          value / 100,
+        );
       },
     );
   }

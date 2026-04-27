@@ -1417,6 +1417,7 @@
   "desktopDisplaySettingsTopicPositionTitle": "Topic position",
   "desktopDisplaySettingsTopicPositionLeft": "Left",
   "desktopDisplaySettingsTopicPositionRight": "Right",
+  "displaySettingsPageChatBubbleHorizontalMarginTitle": "Chat Bubble Side Margin",
   "displaySettingsPageNewChatOnLaunchSubtitle": "Automatically create a new chat on launch",
   "displaySettingsPageChatFontSizeTitle": "Chat Font Size",
   "displaySettingsPageChatBaseFontSizeTitle": "Base Font Size",

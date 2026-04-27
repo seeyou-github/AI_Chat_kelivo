@@ -3258,6 +3258,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get desktopDisplaySettingsTopicPositionRight => '右侧';
 
   @override
+  String get displaySettingsPageChatBubbleHorizontalMarginTitle => '聊天气泡边距';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '应用启动时自动创建新对话';
 
   @override
@@ -7593,6 +7596,9 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get desktopDisplaySettingsTopicPositionRight => '右侧';
 
   @override
+  String get displaySettingsPageChatBubbleHorizontalMarginTitle => '聊天气泡边距';
+
+  @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '应用启动时自动创建新对话';
 
   @override
@@ -11924,6 +11930,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get desktopDisplaySettingsTopicPositionRight => '右側';
+
+  @override
+  String get displaySettingsPageChatBubbleHorizontalMarginTitle => '聊天氣泡邊距';
 
   @override
   String get displaySettingsPageNewChatOnLaunchSubtitle => '應用程式啟動時自動建立新對話';

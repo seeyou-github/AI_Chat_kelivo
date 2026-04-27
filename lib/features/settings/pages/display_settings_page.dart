@@ -51,6 +51,11 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         .displaySettingsPageMarkdownCodeLineHeightTitle;
   }
 
+  String _chatBubbleHorizontalMarginLabel(BuildContext context) {
+    return AppLocalizations.of(context)!
+        .displaySettingsPageChatBubbleHorizontalMarginTitle;
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -245,6 +250,25 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   );
                 },
                 onTap: () => _showChatMessageBackgroundSheet(context),
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.MessageSquare,
+                label: _chatBubbleHorizontalMarginLabel(context),
+                detailBuilder: (ctx) {
+                  final value =
+                      ctx.watch<SettingsProvider>().chatBubbleHorizontalMarginFactor *
+                      100;
+                  return Text(
+                    '${value.toStringAsFixed(1)}%',
+                    style: TextStyle(
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                      fontSize: 13,
+                    ),
+                  );
+                },
+                onTap: () => _showChatBubbleHorizontalMarginSheet(context),
               ),
               _iosDivider(context),
               _iosNavRow(
@@ -903,6 +927,49 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
         l10n.displaySettingsPageChatFontSampleText,
         style: TextStyle(fontSize: value),
       ),
+    );
+  }
+
+  Future<void> _showChatBubbleHorizontalMarginSheet(
+    BuildContext context,
+  ) async {
+    final settings = context.read<SettingsProvider>();
+    await _showSliderSheet(
+      context: context,
+      title: _chatBubbleHorizontalMarginLabel(context),
+      value: settings.chatBubbleHorizontalMarginFactor * 100,
+      min: 0,
+      max: 15,
+      divisions: 30,
+      valueTextBuilder: (value) => '${value.toStringAsFixed(1)}%',
+      onChanged: (value) {
+        return settings.setChatBubbleHorizontalMarginFactor(value / 100);
+      },
+      previewBuilder: (ctx, value) {
+        final previewWidth = MediaQuery.sizeOf(ctx).width - 32;
+        final horizontalMargin = previewWidth * (value / 100);
+        return Container(
+          width: double.infinity,
+          color: Colors.transparent,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: Container(
+              width: (previewWidth - horizontalMargin * 2)
+                  .clamp(120.0, previewWidth)
+                  .toDouble(),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                AppLocalizations.of(ctx)!.displaySettingsPageChatFontSampleText,
+                textAlign: TextAlign.left,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

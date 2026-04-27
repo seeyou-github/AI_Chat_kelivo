@@ -6326,6 +6326,12 @@ abstract class AppLocalizations {
   /// **'Right'**
   String get desktopDisplaySettingsTopicPositionRight;
 
+  /// No description provided for @displaySettingsPageChatBubbleHorizontalMarginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat Bubble Side Margin'**
+  String get displaySettingsPageChatBubbleHorizontalMarginTitle;
+
   /// No description provided for @displaySettingsPageNewChatOnLaunchSubtitle.
   ///
   /// In en, this message translates to:

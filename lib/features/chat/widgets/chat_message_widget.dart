@@ -1129,6 +1129,7 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     final userProvider = context.watch<UserProvider>();
     final l10n = AppLocalizations.of(context)!;
     final settings = context.watch<SettingsProvider>();
+    final bubbleMaxWidthFactor = settings.chatBubbleMaxWidthFactor;
     final parsed = _parseUserContent(widget.message.content);
     final assistant = _assistantForMessage();
     final visualText = applyAssistantRegexes(
@@ -1204,7 +1205,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             child: Container(
               key: _userBubbleKey,
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.9,
+                maxWidth:
+                    MediaQuery.sizeOf(context).width * bubbleMaxWidthFactor,
               ),
               child: _buildBubbleContainer(
                 context: context,
@@ -1455,7 +1457,8 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
               alignment: Alignment.centerRight,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: MediaQuery.sizeOf(context).width * 0.9,
+                  maxWidth:
+                      MediaQuery.sizeOf(context).width * bubbleMaxWidthFactor,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,

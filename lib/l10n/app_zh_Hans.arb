@@ -1512,5 +1512,6 @@
   "tokenDetailCompletionTokens": "{count} tokens",
   "tokenDetailSpeed": "{value} tok/s",
   "tokenDetailDuration": "{value}s",
-  "tokenDetailTotalTokens": "{count} tokens"
+  "tokenDetailTotalTokens": "{count} tokens",
+  "displaySettingsPageChatBubbleHorizontalMarginTitle": "聊天气泡边距"
 }

@@ -201,11 +201,12 @@ class MessageListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<SettingsProvider>();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double horizontalPad = (constraints.maxWidth * 0.05)
-            .clamp(8.0, double.infinity)
-            .toDouble();
+        final double horizontalPad = settings.chatBubbleHorizontalPaddingForWidth(
+          constraints.maxWidth,
+        );
 
         return ValueListenableBuilder<bool>(
           valueListenable: isProcessingFiles,
