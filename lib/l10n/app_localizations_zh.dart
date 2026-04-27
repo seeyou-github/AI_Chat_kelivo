@@ -3310,14 +3310,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageConversationTextColorTitle => '对话界面文字颜色';
 
   @override
-  String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
-
-  @override
-  String get displaySettingsPageConversationTextColorDialogTitle =>
-      '对话界面文字颜色';
+  String get displaySettingsPageConversationTextColorDialogTitle => '对话界面文字颜色';
 
   @override
   String get displaySettingsPageConversationTextColorPreview => '预览';
+
+  @override
+  String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
 
   @override
   String get desktopSettingsFontsTitle => '字体设置';
@@ -7651,14 +7650,13 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageConversationTextColorTitle => '对话界面文字颜色';
 
   @override
-  String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
-
-  @override
-  String get displaySettingsPageConversationTextColorDialogTitle =>
-      '对话界面文字颜色';
+  String get displaySettingsPageConversationTextColorDialogTitle => '对话界面文字颜色';
 
   @override
   String get displaySettingsPageConversationTextColorPreview => '预览';
+
+  @override
+  String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
 
   @override
   String get desktopSettingsFontsTitle => '字体设置';
@@ -11957,7 +11955,8 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
       'Markdown 標題字體大小';
 
   @override
-  String get displaySettingsPageMarkdownCodeFontSizeTitle => 'Markdown 程式碼區塊字體大小';
+  String get displaySettingsPageMarkdownCodeFontSizeTitle =>
+      'Markdown 程式碼區塊字體大小';
 
   @override
   String get displaySettingsPageMarkdownCodeLineHeightTitle => '程式碼區塊行高';
@@ -11990,14 +11989,13 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get displaySettingsPageConversationTextColorTitle => '對話介面文字顏色';
 
   @override
-  String get displaySettingsPageCodeBlockTextColorTitle => '程式碼區塊文字顏色';
-
-  @override
-  String get displaySettingsPageConversationTextColorDialogTitle =>
-      '對話介面文字顏色';
+  String get displaySettingsPageConversationTextColorDialogTitle => '對話介面文字顏色';
 
   @override
   String get displaySettingsPageConversationTextColorPreview => '預覽';
+
+  @override
+  String get displaySettingsPageCodeBlockTextColorTitle => '程式碼區塊文字顏色';
 
   @override
   String get desktopSettingsFontsTitle => '字體設定';
