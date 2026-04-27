@@ -93,9 +93,12 @@ class Win32Window {
   static Win32Window* GetThisFromHandle(HWND const window) noexcept;
 
   // Update the window frame's theme to match the system theme.
-  static void UpdateTheme(HWND const window);
+  void UpdateTheme();
+  void UpdateBackgroundBrush();
 
   bool quit_on_close_ = false;
+  bool dark_mode_enabled_ = false;
+  HBRUSH background_brush_ = nullptr;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;

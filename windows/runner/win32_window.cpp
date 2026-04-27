@@ -151,7 +151,7 @@ bool Win32Window::Create(const std::wstring& title,
     return false;
   }
 
-  UpdateTheme(window);
+  UpdateTheme();
 
   return OnCreate();
 }
@@ -221,8 +221,19 @@ Win32Window::MessageHandler(HWND hwnd,
       return 0;
 
     case WM_DWMCOLORIZATIONCOLORCHANGED:
-      UpdateTheme(hwnd);
+      UpdateTheme();
+      InvalidateRect(hwnd, nullptr, TRUE);
       return 0;
+
+    case WM_ERASEBKGND: {
+      if (background_brush_ == nullptr) {
+        return DefWindowProc(window_handle_, message, wparam, lparam);
+      }
+      RECT rect;
+      GetClientRect(hwnd, &rect);
+      FillRect(reinterpret_cast<HDC>(wparam), &rect, background_brush_);
+      return 0;
+    }
 
     case WM_CONTEXTMENU:
       // Swallow default system context-menu for the main window.
@@ -238,6 +249,11 @@ Win32Window::MessageHandler(HWND hwnd,
 
 void Win32Window::Destroy() {
   OnDestroy();
+
+  if (background_brush_ != nullptr) {
+    DeleteObject(background_brush_);
+    background_brush_ = nullptr;
+  }
 
   if (window_handle_) {
     DestroyWindow(window_handle_);
@@ -326,7 +342,19 @@ void Win32Window::OnDestroy() {
   // No-op; provided for subclasses.
 }
 
-void Win32Window::UpdateTheme(HWND const window) {
+void Win32Window::UpdateBackgroundBrush() {
+  if (background_brush_ != nullptr) {
+    DeleteObject(background_brush_);
+    background_brush_ = nullptr;
+  }
+
+  const COLORREF color = dark_mode_enabled_
+      ? RGB(18, 18, 19)
+      : RGB(247, 247, 247);
+  background_brush_ = CreateSolidBrush(color);
+}
+
+void Win32Window::UpdateTheme() {
   DWORD light_mode;
   DWORD light_mode_size = sizeof(light_mode);
   LSTATUS result = RegGetValue(HKEY_CURRENT_USER, kGetPreferredBrightnessRegKey,
@@ -335,8 +363,12 @@ void Win32Window::UpdateTheme(HWND const window) {
                                &light_mode_size);
 
   if (result == ERROR_SUCCESS) {
-    BOOL enable_dark_mode = light_mode == 0;
-    DwmSetWindowAttribute(window, DWMWA_USE_IMMERSIVE_DARK_MODE,
+    dark_mode_enabled_ = light_mode == 0;
+    BOOL enable_dark_mode = dark_mode_enabled_;
+    DwmSetWindowAttribute(window_handle_, DWMWA_USE_IMMERSIVE_DARK_MODE,
                           &enable_dark_mode, sizeof(enable_dark_mode));
+  } else {
+    dark_mode_enabled_ = false;
   }
+  UpdateBackgroundBrush();
 }

@@ -1,9 +1,36 @@
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <windows.h>
+#include <filesystem>
 
 #include "flutter_window.h"
 #include "utils.h"
+
+namespace {
+
+void ConfigurePortableEnvironment() {
+  wchar_t exe_path[MAX_PATH];
+  if (::GetModuleFileNameW(nullptr, exe_path, MAX_PATH) == 0) {
+    return;
+  }
+
+  std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
+  std::filesystem::path app_data = exe_dir / L"AppData";
+  std::filesystem::path config_dir = app_data / L"Config";
+  std::filesystem::path cache_dir = app_data / L"cache";
+
+  std::error_code ec;
+  std::filesystem::create_directories(config_dir, ec);
+  ec.clear();
+  std::filesystem::create_directories(cache_dir, ec);
+
+  ::SetEnvironmentVariableW(L"APPDATA", config_dir.c_str());
+  ::SetEnvironmentVariableW(L"LOCALAPPDATA", config_dir.c_str());
+  ::SetEnvironmentVariableW(L"TEMP", cache_dir.c_str());
+  ::SetEnvironmentVariableW(L"TMP", cache_dir.c_str());
+}
+
+}  // namespace
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
@@ -26,6 +53,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  ConfigurePortableEnvironment();
 
   flutter::DartProject project(L"data");
 
