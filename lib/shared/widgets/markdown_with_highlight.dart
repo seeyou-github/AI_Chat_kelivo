@@ -117,6 +117,24 @@ class _ChatScaleNeutralizerScope extends InheritedWidget {
   bool updateShouldNotify(_ChatScaleNeutralizerScope oldWidget) => false;
 }
 
+class _BlockQuoteDepthScope extends InheritedWidget {
+  const _BlockQuoteDepthScope({required this.depth, required super.child});
+
+  final int depth;
+
+  static int of(BuildContext context) {
+    return context
+            .dependOnInheritedWidgetOfExactType<_BlockQuoteDepthScope>()
+            ?.depth ??
+        0;
+  }
+
+  @override
+  bool updateShouldNotify(_BlockQuoteDepthScope oldWidget) {
+    return depth != oldWidget.depth;
+  }
+}
+
 Widget _withoutChatScale(BuildContext context, Widget child) {
   final media = MediaQuery.maybeOf(context);
   if (media == null) return child;
@@ -2604,37 +2622,48 @@ class ModernBlockQuote extends InlineMd {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bg = cs.primaryContainer.withValues(alpha: isDark ? 0.18 : 0.12);
     final accent = cs.primary.withValues(alpha: isDark ? 0.90 : 0.80);
-    final quoteStyle = _markdownResolvedTextStyle(
-      context,
-      style: config.style,
-      color: _conversationBaseColor(context),
-    ).copyWith(fontSize: _markdownCodeFontSize(context));
-
-    final inner = TextSpan(
-      children: MarkdownComponent.generate(
-        context,
-        data,
-        config.copyWith(style: quoteStyle),
-        true,
-      ),
-    );
+    final quoteDepth = _BlockQuoteDepthScope.of(context) + 1;
     final child = Directionality(
       textDirection: config.textDirection,
       child: _withoutChatScale(
         context,
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border(left: BorderSide(color: accent, width: 3)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: DefaultTextStyle.merge(
-              style: quoteStyle,
-              child: config.copyWith(style: quoteStyle).getRich(inner),
-            ),
+        _BlockQuoteDepthScope(
+          depth: quoteDepth,
+          child: Builder(
+            builder: (scopedContext) {
+              final quoteFontSize = quoteDepth >= 2
+                  ? 10.0
+                  : _markdownCodeFontSize(scopedContext);
+              final quoteStyle = _markdownResolvedTextStyle(
+                scopedContext,
+                style: config.style,
+                color: _conversationBaseColor(scopedContext),
+              ).copyWith(fontSize: quoteFontSize);
+              final inner = TextSpan(
+                children: MarkdownComponent.generate(
+                  scopedContext,
+                  data,
+                  config.copyWith(style: quoteStyle),
+                  true,
+                ),
+              );
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border(left: BorderSide(color: accent, width: 3)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                  child: DefaultTextStyle.merge(
+                    style: quoteStyle,
+                    child: config.copyWith(style: quoteStyle).getRich(inner),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),

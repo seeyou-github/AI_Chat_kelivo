@@ -133,8 +133,8 @@ void main() {
 
       void expectMarkdownCodeSize(double expected) {
         expect(_fontSizeForText(tester, '引用文本'), expected);
-        expect(_fontSizeForText(tester, '二级引用'), expected);
-        expect(_fontSizeForText(tester, '三级引用'), expected);
+        expect(_fontSizeForText(tester, '二级引用'), 10.0);
+        expect(_fontSizeForText(tester, '三级引用'), 10.0);
         expect(_fontSizeForText(tester, '左列'), expected);
         expect(_fontSizeForText(tester, '表格内容'), expected);
         expect(_fontSizeForText(tester, '表格链接'), expected);
@@ -152,7 +152,7 @@ void main() {
     });
 
     testWidgets(
-      'nested blockquotes stay aligned with code blocks under chat scale',
+      'nested blockquotes use fixed 10px font regardless of chat scale',
       (tester) async {
         SharedPreferences.setMockInitialValues({});
         final settings = SettingsProvider();
@@ -179,9 +179,13 @@ void main() {
 
         final level2Scale = _richTextScaleForText(tester, '二级引用字号');
         final level3Scale = _richTextScaleForText(tester, '三级引用字号');
+        final level2FontSize = _fontSizeForText(tester, '二级引用字号');
+        final level3FontSize = _fontSizeForText(tester, '三级引用字号');
 
         expect(level2Scale, isNotNull);
         expect(level3Scale, isNotNull);
+        expect(level2FontSize, 10.0);
+        expect(level3FontSize, 10.0);
         expect(level2Scale!, closeTo(1.0, 0.01));
         expect(level3Scale!, closeTo(1.0, 0.01));
       },
