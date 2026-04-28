@@ -68,6 +68,16 @@ double? _fontSizeForText(WidgetTester tester, String target) {
   return null;
 }
 
+int _blockquoteContainerCount(WidgetTester tester) {
+  return tester.widgetList<Container>(find.byType(Container)).where((widget) {
+    final decoration = widget.decoration;
+    if (decoration is! BoxDecoration) return false;
+    final border = decoration.border;
+    if (border is! Border) return false;
+    return border.left.width == 3;
+  }).length;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -113,11 +123,13 @@ void main() {
       }
 
       expectMarkdownCodeSize(initialCodeSize);
+      expect(_blockquoteContainerCount(tester), greaterThanOrEqualTo(3));
 
       await settings.setMarkdownCodeFontSize(updatedCodeSize);
       await tester.pump();
 
       expectMarkdownCodeSize(updatedCodeSize);
+      expect(_blockquoteContainerCount(tester), greaterThanOrEqualTo(3));
     });
   });
 }

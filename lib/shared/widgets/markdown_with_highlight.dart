@@ -2579,7 +2579,7 @@ class ModernBlockQuote extends InlineMd {
     final sb = StringBuffer();
     for (final line in m.split('\n')) {
       if (RegExp(r'^\ *>').hasMatch(line)) {
-        final sub = line.trimLeft().replaceFirst(RegExp(r'^(?:>\s*)+'), '');
+        final sub = line.trimLeft().replaceFirst(RegExp(r'^>\s?'), '');
         sb.writeln(sub);
       } else {
         sb.writeln(line);
