@@ -64,5 +64,22 @@ void main() {
 
       expect(position, const Offset(300, 200));
     });
+
+    test('parses prefixed portable shared preferences startup size', () {
+      const raw =
+          '{"flutter.window_width_v1":960.0,"flutter.window_height_v1":640.0}';
+
+      final size = const WindowSizeManager().sizeFromPortablePreferencesJson(
+        raw,
+      );
+
+      expect(
+        size,
+        const Size(
+          WindowSizeManager.minWindowWidth,
+          WindowSizeManager.minWindowHeight,
+        ),
+      );
+    });
   });
 }

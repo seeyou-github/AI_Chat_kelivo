@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,6 +47,21 @@ class WindowSizeManager {
     return _clamp(Size(width, height));
   }
 
+  Future<Size?> getFastStartupSizeFromPortableConfig() async {
+    if (!Platform.isWindows) return null;
+    try {
+      final exeDir = File(Platform.resolvedExecutable).parent;
+      final file = File(
+        '${exeDir.path}${Platform.pathSeparator}AppData${Platform.pathSeparator}Config${Platform.pathSeparator}shared_preferences.json',
+      );
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      return sizeFromPortablePreferencesJson(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Size getDefaultInitialSize() {
     return _clamp(const Size(defaultWindowWidth, defaultWindowHeight));
   }
@@ -63,5 +81,28 @@ class WindowSizeManager {
       workArea: visiblePosition & visibleSize,
       windowSize: _clamp(size),
     );
+  }
+
+  @visibleForTesting
+  Size? sizeFromPortablePreferencesJson(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final width = _portableDouble(decoded, 'flutter.$_kWidth');
+      final height = _portableDouble(decoded, 'flutter.$_kHeight');
+      if (width == null && height == null) return null;
+      return _clamp(
+        Size(width ?? defaultWindowWidth, height ?? defaultWindowHeight),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static double? _portableDouble(Map decoded, String key) {
+    final value = decoded[key];
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 }

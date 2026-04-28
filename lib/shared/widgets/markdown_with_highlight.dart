@@ -2606,18 +2606,21 @@ class ModernBlockQuote extends InlineMd {
     );
     final child = Directionality(
       textDirection: config.textDirection,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: accent, width: 3)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          child: DefaultTextStyle.merge(
-            style: quoteStyle,
-            child: config.copyWith(style: quoteStyle).getRich(inner),
+      child: _withoutChatScale(
+        context,
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border(left: BorderSide(color: accent, width: 3)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+            child: DefaultTextStyle.merge(
+              style: quoteStyle,
+              child: config.copyWith(style: quoteStyle).getRich(inner),
+            ),
           ),
         ),
       ),

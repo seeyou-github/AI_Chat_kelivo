@@ -38,8 +38,11 @@ class DesktopWindowController with WindowListener {
     }
     _attachListeners();
     // Windows custom title bar is handled in main (TitleBarStyle.hidden)
-
-    final initialSize = useDefaultSizeWhenPrefsMissing && initialPrefs == null
+    final initialSize =
+        isWindows && useDefaultSizeWhenPrefsMissing && initialPrefs == null
+        ? await _sizeMgr.getFastStartupSizeFromPortableConfig() ??
+              _sizeMgr.getDefaultInitialSize()
+        : useDefaultSizeWhenPrefsMissing && initialPrefs == null
         ? _sizeMgr.getDefaultInitialSize()
         : await _sizeMgr.getInitialSize(prefs: initialPrefs);
     const minSize = Size(
