@@ -141,6 +141,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _displayShowToolResultSummaryKey =
       'display_show_tool_result_summary_v1';
   static const String _displayShowMessageNavKey = 'display_show_message_nav_v1';
+  static const String _displayAlwaysShowMessageNavKey =
+      'display_always_show_message_nav_v1';
   static const String _displayUseNewAssistantAvatarUxKey =
       'display_use_new_assistant_avatar_ux_v1';
   static const String _displayShowProviderInModelCapsuleKey =
@@ -204,6 +206,10 @@ class SettingsProvider extends ChangeNotifier {
       'display_conversation_code_text_light_color_v1';
   static const String _displayConversationCodeTextDarkColorKey =
       'display_conversation_code_text_dark_color_v1';
+  static const String _displayUiTextLightColorKey =
+      'display_ui_text_light_color_v1';
+  static const String _displayUiTextDarkColorKey =
+      'display_ui_text_dark_color_v1';
   static const String _displayAutoScrollEnabledKey =
       'display_auto_scroll_enabled_v1';
   static const String _displayAutoScrollIdleSecondsKey =
@@ -558,6 +564,8 @@ class SettingsProvider extends ChangeNotifier {
     _showToolResultSummary =
         prefs.getBool(_displayShowToolResultSummaryKey) ?? false;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
+    _alwaysShowMessageNavButtons =
+        prefs.getBool(_displayAlwaysShowMessageNavKey) ?? false;
     _useNewAssistantAvatarUx =
         prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? false;
     _showProviderInModelCapsule =
@@ -653,6 +661,8 @@ class SettingsProvider extends ChangeNotifier {
     _conversationCodeTextDarkColorValue = prefs.getInt(
       _displayConversationCodeTextDarkColorKey,
     );
+    _uiTextLightColorValue = prefs.getInt(_displayUiTextLightColorKey);
+    _uiTextDarkColorValue = prefs.getInt(_displayUiTextDarkColorKey);
     _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
     _autoScrollIdleSeconds =
         prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
@@ -1115,6 +1125,8 @@ class SettingsProvider extends ChangeNotifier {
     _showToolResultSummary =
         prefs.getBool(_displayShowToolResultSummaryKey) ?? false;
     _showMessageNavButtons = prefs.getBool(_displayShowMessageNavKey) ?? true;
+    _alwaysShowMessageNavButtons =
+        prefs.getBool(_displayAlwaysShowMessageNavKey) ?? false;
     _useNewAssistantAvatarUx =
         prefs.getBool(_displayUseNewAssistantAvatarUxKey) ?? false;
     _showProviderInModelCapsule =
@@ -1226,6 +1238,8 @@ class SettingsProvider extends ChangeNotifier {
     _conversationCodeTextDarkColorValue = prefs.getInt(
       _displayConversationCodeTextDarkColorKey,
     );
+    _uiTextLightColorValue = prefs.getInt(_displayUiTextLightColorKey);
+    _uiTextDarkColorValue = prefs.getInt(_displayUiTextDarkColorKey);
     _autoScrollEnabled = prefs.getBool(_displayAutoScrollEnabledKey) ?? true;
     _autoScrollIdleSeconds =
         prefs.getInt(_displayAutoScrollIdleSecondsKey) ?? 8;
@@ -3229,6 +3243,16 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setBool(_displayShowMessageNavKey, v);
   }
 
+  bool _alwaysShowMessageNavButtons = false;
+  bool get alwaysShowMessageNavButtons => _alwaysShowMessageNavButtons;
+  Future<void> setAlwaysShowMessageNavButtons(bool v) async {
+    if (_alwaysShowMessageNavButtons == v) return;
+    _alwaysShowMessageNavButtons = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_displayAlwaysShowMessageNavKey, v);
+  }
+
   // Display: use the new assistant avatar UX in app bars.
   bool _useNewAssistantAvatarUx = false;
   bool get useNewAssistantAvatarUx => _useNewAssistantAvatarUx;
@@ -3345,10 +3369,14 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   static const Color _defaultConversationTextDarkColor = Color(0xFFF1F0F7);
   static const Color _defaultConversationCodeTextLightColor = Color(0xFF273244);
   static const Color _defaultConversationCodeTextDarkColor = Color(0xFFE5ECF6);
+  static const Color _defaultUiTextLightColor = Color(0xFF1A1B21);
+  static const Color _defaultUiTextDarkColor = Color(0xFFF1F0F7);
   int? _conversationTextLightColorValue;
   int? _conversationTextDarkColorValue;
   int? _conversationCodeTextLightColorValue;
   int? _conversationCodeTextDarkColorValue;
+  int? _uiTextLightColorValue;
+  int? _uiTextDarkColorValue;
   Color get conversationTextLightColor =>
       _colorFromValue(_conversationTextLightColorValue) ??
       _defaultConversationTextLightColor;
@@ -3361,6 +3389,10 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
   Color get conversationCodeTextDarkColor =>
       _colorFromValue(_conversationCodeTextDarkColorValue) ??
       _defaultConversationCodeTextDarkColor;
+  Color get uiTextLightColor =>
+      _colorFromValue(_uiTextLightColorValue) ?? _defaultUiTextLightColor;
+  Color get uiTextDarkColor =>
+      _colorFromValue(_uiTextDarkColorValue) ?? _defaultUiTextDarkColor;
   Color resolveConversationTextColor(Brightness brightness, {Color? fallback}) {
     if (brightness == Brightness.dark) {
       return _colorFromValue(_conversationTextDarkColorValue) ??
@@ -3384,6 +3416,21 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     return _colorFromValue(_conversationCodeTextLightColorValue) ??
         fallback ??
         _defaultConversationCodeTextLightColor;
+  }
+
+  Color? customUiTextColor(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? _colorFromValue(_uiTextDarkColorValue)
+        : _colorFromValue(_uiTextLightColorValue);
+  }
+
+  Color resolveUiTextColor(Brightness brightness, {Color? fallback}) {
+    final custom = customUiTextColor(brightness);
+    if (custom != null) return custom;
+    return fallback ??
+        (brightness == Brightness.dark
+            ? _defaultUiTextDarkColor
+            : _defaultUiTextLightColor);
   }
 
   static Color? _colorFromValue(int? value) {
@@ -3560,6 +3607,39 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     _conversationCodeTextLightColorValue = null;
     notifyListeners();
     await prefs.remove(_displayConversationCodeTextLightColorKey);
+  }
+
+  Future<void> setUiTextLightColor(Color color) async {
+    final value = color.toARGB32();
+    if (_uiTextLightColorValue == value) return;
+    _uiTextLightColorValue = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayUiTextLightColorKey, value);
+  }
+
+  Future<void> setUiTextDarkColor(Color color) async {
+    final value = color.toARGB32();
+    if (_uiTextDarkColorValue == value) return;
+    _uiTextDarkColorValue = value;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_displayUiTextDarkColorKey, value);
+  }
+
+  Future<void> resetUiTextColor(Brightness brightness) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (brightness == Brightness.dark) {
+      if (_uiTextDarkColorValue == null) return;
+      _uiTextDarkColorValue = null;
+      notifyListeners();
+      await prefs.remove(_displayUiTextDarkColorKey);
+      return;
+    }
+    if (_uiTextLightColorValue == null) return;
+    _uiTextLightColorValue = null;
+    notifyListeners();
+    await prefs.remove(_displayUiTextLightColorKey);
   }
 
   // Display: auto-scroll back to bottom toggle
@@ -4062,6 +4142,7 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._collapseThinkingSteps = _collapseThinkingSteps;
     copy._showToolResultSummary = _showToolResultSummary;
     copy._showMessageNavButtons = _showMessageNavButtons;
+    copy._alwaysShowMessageNavButtons = _alwaysShowMessageNavButtons;
     copy._useNewAssistantAvatarUx = _useNewAssistantAvatarUx;
     copy._showProviderInModelCapsule = _showProviderInModelCapsule;
     copy._showProviderInChatMessage = _showProviderInChatMessage;
@@ -4101,6 +4182,8 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
         _conversationCodeTextLightColorValue;
     copy._conversationCodeTextDarkColorValue =
         _conversationCodeTextDarkColorValue;
+    copy._uiTextLightColorValue = _uiTextLightColorValue;
+    copy._uiTextDarkColorValue = _uiTextDarkColorValue;
     copy._autoScrollEnabled = _autoScrollEnabled;
     copy._autoScrollIdleSeconds = _autoScrollIdleSeconds;
     copy._chatBubbleHorizontalMarginFactor = _chatBubbleHorizontalMarginFactor;

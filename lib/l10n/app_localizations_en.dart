@@ -3321,6 +3321,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Show quick jump buttons when scrolling';
 
   @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsTitle =>
+      'Always show message navigation buttons';
+
+  @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsSubtitle =>
+      'Keep quick jump buttons visible in chat';
+
+  @override
   String get displaySettingsPageUseNewAssistantAvatarUxTitle =>
       'Show assistant avatar in chat title bar';
 
@@ -3459,6 +3467,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get displaySettingsPageCodeBlockTextColorTitle =>
       'Code Block Text Color';
+
+  @override
+  String get displaySettingsPageUiTextColorTitle => 'Interface Text Color';
+
+  @override
+  String get displaySettingsPageUiTextColorDialogTitle =>
+      'Interface Text Color';
 
   @override
   String get desktopSettingsFontsTitle => 'Fonts';

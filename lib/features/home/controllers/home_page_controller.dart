@@ -410,6 +410,8 @@ class HomePageController extends ChangeNotifier {
   void _initializeProviders() {
     try {
       final quickPhraseProvider = _context.read<QuickPhraseProvider>();
+      final instructionProvider = _context.read<InstructionInjectionProvider>();
+      final memoryProvider = _context.read<MemoryProvider>();
       _deferredProviderWarmupTimer?.cancel();
       _deferredProviderWarmupTimer = Timer(
         const Duration(milliseconds: 900),
@@ -418,12 +420,9 @@ class HomePageController extends ChangeNotifier {
             await quickPhraseProvider.initialize();
           } catch (_) {}
           try {
-            final instructionProvider = _context
-                .read<InstructionInjectionProvider>();
             await instructionProvider.initialize();
           } catch (_) {}
           try {
-            final memoryProvider = _context.read<MemoryProvider>();
             await memoryProvider.initialize();
           } catch (_) {}
         },

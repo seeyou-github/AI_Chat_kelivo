@@ -11,7 +11,6 @@ import '../../chat/widgets/chat_message_widget.dart';
 import '../../chat/widgets/message_more_sheet.dart';
 import '../controllers/stream_controller.dart' as stream_ctrl;
 import '../controllers/streaming_content_notifier.dart';
-import '../utils/chat_layout_constants.dart';
 import 'model_icon.dart';
 
 /// Callback types for message list view actions
@@ -204,9 +203,8 @@ class MessageListView extends StatelessWidget {
     final settings = context.watch<SettingsProvider>();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double horizontalPad = settings.chatBubbleHorizontalPaddingForWidth(
-          constraints.maxWidth,
-        );
+        final double horizontalPad = settings
+            .chatBubbleHorizontalPaddingForWidth(constraints.maxWidth);
 
         return ValueListenableBuilder<bool>(
           valueListenable: isProcessingFiles,

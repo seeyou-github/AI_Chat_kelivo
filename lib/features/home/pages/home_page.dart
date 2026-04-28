@@ -930,15 +930,16 @@ class _HomePageState extends State<HomePage>
   Widget _buildScrollButtons() {
     return Builder(
       builder: (context) {
-        final showSetting = context
-            .watch<SettingsProvider>()
-            .showMessageNavButtons;
+        final settings = context.watch<SettingsProvider>();
+        final showSetting = settings.showMessageNavButtons;
         if (_controller.selecting) return const SizedBox.shrink();
         if (!showSetting || _controller.messages.isEmpty) {
           return const SizedBox.shrink();
         }
         return ScrollNavButtonsPanel(
-          visible: _controller.scrollCtrl.showNavButtons,
+          visible:
+              settings.alwaysShowMessageNavButtons ||
+              _controller.scrollCtrl.showNavButtons,
           bottomOffset: _controller.inputBarHeight + 12,
           onScrollToTop: _controller.scrollToTop,
           onPreviousMessage: _controller.jumpToPreviousQuestion,

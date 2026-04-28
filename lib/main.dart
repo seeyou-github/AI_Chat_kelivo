@@ -65,7 +65,7 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       await WindowsPortableStorage.installIfNeeded();
-      await WindowsPortablePathProvider.installIfNeeded();
+      WindowsPortablePathProvider.installIfReady();
       FlutterLogger.installGlobalHandlers();
       try {
         _bootstrapPrefs = await SharedPreferences.getInstance();
@@ -107,17 +107,14 @@ Future<void> main() async {
 Future<void> _initDesktopWindow({SharedPreferences? initialPrefs}) async {
   if (kIsWeb) return;
   try {
-    final isWindows = defaultTargetPlatform == TargetPlatform.windows;
     if (defaultTargetPlatform == TargetPlatform.windows) {
       await windowManager.ensureInitialized();
       await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     }
-    // Windows startup favors first paint: keep the custom title bar and size,
-    // and skip the extra screen query used only for startup centering.
     await DesktopWindowController.instance.initializeAndShow(
       title: 'Kelivo',
       initialPrefs: initialPrefs,
-      centerOnStartup: !isWindows,
+      centerOnStartup: true,
     );
   } catch (_) {
     // Ignore on unsupported platforms.
@@ -180,6 +177,12 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
   await Future<void>.delayed(const Duration(milliseconds: 250));
   if (!context.mounted) return;
   final settings = context.read<SettingsProvider>();
+  final assistantProvider = context.read<AssistantProvider>();
+  final chatService = context.read<ChatService>();
+  final userProvider = context.read<UserProvider>();
+  final hotkeyProvider = context.read<HotkeyProvider>();
+  final updateProvider = context.read<UpdateProvider>();
+  final mcpProvider = context.read<McpProvider>();
   if (defaultTargetPlatform == TargetPlatform.windows) {
     unawaited(AppDirectories.ensureWindowsPortableStorageReady());
   }
@@ -191,17 +194,15 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
   if (!_didEnsureAssistants && l10n != null) {
     _didEnsureAssistants = true;
     try {
-      await context.read<AssistantProvider>().ensureDefaults(context);
+      await assistantProvider.ensureDefaults(context);
     } catch (_) {}
     try {
-      context.read<ChatService>().setDefaultConversationTitle(
+      chatService.setDefaultConversationTitle(
         l10n.chatServiceDefaultConversationTitle,
       );
     } catch (_) {}
     try {
-      context.read<UserProvider>().setDefaultNameIfUnset(
-        l10n.userProviderDefaultUserName,
-      );
+      userProvider.setDefaultNameIfUnset(l10n.userProviderDefaultUserName);
     } catch (_) {}
   }
 
@@ -243,7 +244,7 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
     await Future<void>.delayed(const Duration(milliseconds: 120));
     if (!context.mounted) return;
     try {
-      await context.read<HotkeyProvider>().initialize();
+      await hotkeyProvider.initialize();
     } catch (_) {}
   }
 
@@ -252,7 +253,7 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
     await Future<void>.delayed(const Duration(milliseconds: 120));
     if (!context.mounted) return;
     try {
-      context.read<UpdateProvider>().checkForUpdates();
+      updateProvider.checkForUpdates();
     } catch (_) {}
   }
 
@@ -282,7 +283,7 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
   }
 
   try {
-    context.read<McpProvider>().scheduleDeferredAutoConnect();
+    mcpProvider.scheduleDeferredAutoConnect();
   } catch (_) {}
 }
 
@@ -431,8 +432,101 @@ class MyApp extends StatelessWidget {
                 );
               }
 
-              final themedLight = applyAppFont(light);
-              final themedDark = applyAppFont(dark);
+              Color contrastOn(Color background) {
+                return background.computeLuminance() > 0.5
+                    ? Colors.black
+                    : Colors.white;
+              }
+
+              ThemeData applyUiTextColor(
+                ThemeData base,
+                Brightness brightness,
+              ) {
+                final color = settings.customUiTextColor(brightness);
+                if (color == null) return base;
+                final cs = base.colorScheme;
+                final onPrimary = contrastOn(color);
+                final muted =
+                    Color.lerp(color, cs.surface, 0.28) ??
+                    color.withValues(alpha: 0.72);
+                TextTheme recolor(TextTheme theme) =>
+                    theme.apply(bodyColor: color, displayColor: color);
+                ButtonStyle textButtonStyle(ButtonStyle? style) =>
+                    (style ?? const ButtonStyle()).copyWith(
+                      foregroundColor: WidgetStatePropertyAll(color),
+                      iconColor: WidgetStatePropertyAll(color),
+                    );
+                ButtonStyle filledButtonStyle(ButtonStyle? style) =>
+                    (style ?? const ButtonStyle()).copyWith(
+                      backgroundColor: WidgetStatePropertyAll(color),
+                      foregroundColor: WidgetStatePropertyAll(onPrimary),
+                      iconColor: WidgetStatePropertyAll(onPrimary),
+                    );
+                final appBar = base.appBarTheme.copyWith(
+                  foregroundColor: color,
+                  titleTextStyle:
+                      (base.appBarTheme.titleTextStyle ??
+                              base.textTheme.titleLarge)
+                          ?.copyWith(color: color),
+                  toolbarTextStyle:
+                      (base.appBarTheme.toolbarTextStyle ??
+                              base.textTheme.bodyMedium)
+                          ?.copyWith(color: color),
+                  iconTheme:
+                      (base.appBarTheme.iconTheme ?? const IconThemeData())
+                          .copyWith(color: color),
+                  actionsIconTheme:
+                      (base.appBarTheme.actionsIconTheme ??
+                              const IconThemeData())
+                          .copyWith(color: color),
+                );
+                return base.copyWith(
+                  colorScheme: cs.copyWith(
+                    primary: color,
+                    onPrimary: onPrimary,
+                    onSurface: color,
+                    onSurfaceVariant: muted,
+                    inversePrimary: color,
+                    surfaceTint: color,
+                  ),
+                  textTheme: recolor(base.textTheme),
+                  primaryTextTheme: recolor(base.primaryTextTheme),
+                  appBarTheme: appBar,
+                  iconTheme: base.iconTheme.copyWith(color: color),
+                  primaryIconTheme: base.primaryIconTheme.copyWith(
+                    color: color,
+                  ),
+                  listTileTheme: base.listTileTheme.copyWith(
+                    textColor: color,
+                    iconColor: color,
+                  ),
+                  textButtonTheme: TextButtonThemeData(
+                    style: textButtonStyle(base.textButtonTheme.style),
+                  ),
+                  outlinedButtonTheme: OutlinedButtonThemeData(
+                    style: textButtonStyle(base.outlinedButtonTheme.style),
+                  ),
+                  iconButtonTheme: IconButtonThemeData(
+                    style: textButtonStyle(base.iconButtonTheme.style),
+                  ),
+                  filledButtonTheme: FilledButtonThemeData(
+                    style: filledButtonStyle(base.filledButtonTheme.style),
+                  ),
+                  elevatedButtonTheme: ElevatedButtonThemeData(
+                    style: filledButtonStyle(base.elevatedButtonTheme.style),
+                  ),
+                  snackBarTheme: base.snackBarTheme.copyWith(
+                    actionTextColor: color,
+                  ),
+                );
+              }
+
+              final themedLight = applyAppFont(
+                applyUiTextColor(light, Brightness.light),
+              );
+              final themedDark = applyAppFont(
+                applyUiTextColor(dark, Brightness.dark),
+              );
               // Log top-level colors likely used by widgets (card/bg/shadow approximations)
               // debugPrint('[Theme/App] Light scaffoldBg=${light.colorScheme.surface.value.toRadixString(16)} card≈${light.colorScheme.surface.value.toRadixString(16)} shadow=${light.colorScheme.shadow.value.toRadixString(16)}');
               // debugPrint('[Theme/App] Dark scaffoldBg=${dark.colorScheme.surface.value.toRadixString(16)} card≈${dark.colorScheme.surface.value.toRadixString(16)} shadow=${dark.colorScheme.shadow.value.toRadixString(16)}');

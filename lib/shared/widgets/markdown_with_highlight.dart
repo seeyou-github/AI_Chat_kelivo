@@ -30,7 +30,7 @@ import 'package:Kelivo/desktop/html_preview_dialog.dart';
 
 Color _conversationBaseColor(BuildContext context, {Color? fallback}) {
   final theme = Theme.of(context);
-  return context.read<SettingsProvider>().resolveConversationTextColor(
+  return context.watch<SettingsProvider>().resolveConversationTextColor(
     theme.brightness,
     fallback: fallback ?? theme.colorScheme.onSurface,
   );
@@ -61,7 +61,7 @@ Color _conversationAccentColor(BuildContext context, {Color? base}) {
 
 Color _conversationCodeTextColor(BuildContext context, {Color? fallback}) {
   final theme = Theme.of(context);
-  return context.read<SettingsProvider>().resolveConversationCodeTextColor(
+  return context.watch<SettingsProvider>().resolveConversationCodeTextColor(
     theme.brightness,
     fallback: fallback ?? theme.colorScheme.onSurface,
   );
@@ -72,7 +72,7 @@ TextStyle _markdownResolvedTextStyle(
   TextStyle? style,
   Color? color,
 }) {
-  final settings = context.read<SettingsProvider>();
+  final settings = context.watch<SettingsProvider>();
   final resolved = style ?? const TextStyle();
   return resolved.copyWith(
     fontSize: resolved.fontSize ?? settings.markdownBaseFontSize,
@@ -83,25 +83,16 @@ TextStyle _markdownResolvedTextStyle(
   );
 }
 
-double _markdownBaseFontSize(
-  BuildContext context, {
-  TextStyle? preferredStyle,
-  double fallback = 15.5,
-}) {
-  final settings = context.read<SettingsProvider>();
-  return preferredStyle?.fontSize ?? settings.markdownBaseFontSize;
-}
-
 double _markdownCodeFontSize(
   BuildContext context, {
   TextStyle? preferredStyle,
   double fallback = 15.5,
 }) {
-  return context.read<SettingsProvider>().markdownCodeFontSize;
+  return context.watch<SettingsProvider>().markdownCodeFontSize;
 }
 
 double _markdownCodeLineHeight(BuildContext context) {
-  return context.read<SettingsProvider>().markdownCodeLineHeight;
+  return context.watch<SettingsProvider>().markdownCodeLineHeight;
 }
 
 double _neutralizedChatScale(BuildContext context) {
@@ -148,6 +139,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
     final settings = context.watch<SettingsProvider>();
     final cs = Theme.of(context).colorScheme;
     final conversationTextColor = settings.resolveConversationTextColor(
+      Theme.of(context).brightness,
+      fallback: cs.onSurface,
+    );
+    final conversationCodeTextColor = settings.resolveConversationCodeTextColor(
       Theme.of(context).brightness,
       fallback: cs.onSurface,
     );
@@ -255,10 +250,10 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
 
     final appFontFamily = resolveAppFont();
 
-    // Force rebuild of the markdown when key theme colors change to avoid stale styles
+    // Force rebuild of the markdown when render-affecting settings change to avoid stale styles.
     final markdownWidget = GptMarkdown(
       key: ValueKey(
-        '${Theme.of(context).brightness.index}-${cs.surface.toARGB32()}-${cs.onSurface.toARGB32()}-${cs.primary.toARGB32()}-${cs.outlineVariant.toARGB32()}',
+        '${Theme.of(context).brightness.index}-${cs.surface.toARGB32()}-${cs.onSurface.toARGB32()}-${cs.primary.toARGB32()}-${cs.outlineVariant.toARGB32()}-${settings.markdownBaseFontSize}-${settings.markdownCodeFontSize}-${settings.markdownCodeLineHeight}-${conversationTextColor.toARGB32()}-${conversationCodeTextColor.toARGB32()}',
       ),
       normalized,
       style: baseTextStyle,
@@ -358,17 +353,15 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         }
         // Default link appearance
         final inheritedStyle = DefaultTextStyle.of(ctx).style;
-        final resolvedLinkStyle = _markdownResolvedTextStyle(
-          ctx,
-          style: inheritedStyle.merge(style),
-          color: _conversationAccentColor(ctx, base: conversationTextColor),
-        ).copyWith(
-          fontSize:
-              style.fontSize ??
-              inheritedStyle.fontSize ??
-              _markdownBaseFontSize(ctx, preferredStyle: baseTextStyle),
-          decoration: TextDecoration.none,
-        );
+        final resolvedLinkStyle =
+            _markdownResolvedTextStyle(
+              ctx,
+              style: inheritedStyle.merge(style),
+              color: _conversationAccentColor(ctx, base: conversationTextColor),
+            ).copyWith(
+              fontSize: _markdownCodeFontSize(ctx),
+              decoration: TextDecoration.none,
+            );
         return Text(
           span.toPlainText(),
           style: resolvedLinkStyle,
@@ -456,10 +449,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           ctx,
           style: style,
           color: _conversationEmphasisColor(ctx, base: conversationTextColor),
-        ).copyWith(
-          fontSize: tableFontSize,
-          fontWeight: FontWeight.w600,
-        );
+        ).copyWith(fontSize: tableFontSize, fontWeight: FontWeight.w600);
         final cellStyle = _markdownResolvedTextStyle(
           ctx,
           style: style,
@@ -698,10 +688,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
         final bool isDarkCtx = Theme.of(ctx).brightness == Brightness.dark;
         final csCtx = Theme.of(ctx).colorScheme;
         final bg = isDarkCtx ? Colors.white12 : const Color(0xFFF1F3F5);
-        final codeFontSize = _markdownCodeFontSize(
-          ctx,
-          preferredStyle: style,
-        );
+        final codeFontSize = _markdownCodeFontSize(ctx, preferredStyle: style);
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
           decoration: BoxDecoration(
@@ -713,16 +700,17 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
           ),
           child: Text(
             softened,
-            style: TextStyle(
-              fontFamily: codeFontFamily,
-              fontSize: codeFontSize,
-              height: 1.4,
-            ).copyWith(
-              color: _conversationCodeTextColor(
-                ctx,
-                fallback: csCtx.onSurface,
-              ),
-            ),
+            style:
+                TextStyle(
+                  fontFamily: codeFontFamily,
+                  fontSize: codeFontSize,
+                  height: 1.4,
+                ).copyWith(
+                  color: _conversationCodeTextColor(
+                    ctx,
+                    fallback: csCtx.onSurface,
+                  ),
+                ),
             softWrap: true,
             overflow: TextOverflow.visible,
           ),
@@ -1293,64 +1281,120 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                   ),
                   child: Row(
                     children: [
-                    const SizedBox(width: 2),
-                    Text(
-                      MarkdownWithCodeHighlight._displayLanguage(
-                        context,
-                        widget.language,
+                      const SizedBox(width: 2),
+                      Text(
+                        MarkdownWithCodeHighlight._displayLanguage(
+                          context,
+                          widget.language,
+                        ),
+                        style: TextStyle(
+                          fontSize: controlFontSize,
+                          fontWeight: FontWeight.w700,
+                          color: _conversationEmphasisColor(context),
+                          height: 1.0,
+                        ),
                       ),
-                      style: TextStyle(
-                        fontSize: controlFontSize,
-                        fontWeight: FontWeight.w700,
-                        color: _conversationEmphasisColor(context),
-                        height: 1.0,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (_isHtml(widget.language))
+                      const Spacer(),
+                      if (_isHtml(widget.language))
+                        InkWell(
+                          onTap: () {
+                            final l10n = AppLocalizations.of(context)!;
+                            if (Platform.isAndroid || Platform.isIOS) {
+                              // Mobile: navigate to preview page
+                              Navigator.of(context).push(
+                                PageRouteBuilder(
+                                  pageBuilder: (_, __, ___) =>
+                                      HtmlPreviewPage(html: widget.code),
+                                  transitionDuration: const Duration(
+                                    milliseconds: 300,
+                                  ),
+                                  reverseTransitionDuration: const Duration(
+                                    milliseconds: 240,
+                                  ),
+                                  transitionsBuilder:
+                                      (context, anim, sec, child) {
+                                        final curved = CurvedAnimation(
+                                          parent: anim,
+                                          curve: Curves.easeOutCubic,
+                                          reverseCurve: Curves.easeInCubic,
+                                        );
+                                        return FadeTransition(
+                                          opacity: curved,
+                                          child: child,
+                                        );
+                                      },
+                                ),
+                              );
+                            } else if (Platform.isLinux) {
+                              // Linux: show not supported
+                              showAppSnackBar(
+                                context,
+                                message: l10n.htmlPreviewNotSupportedOnLinux,
+                                type: NotificationType.warning,
+                              );
+                            } else {
+                              // Desktop (macOS/Windows): open dialog
+                              showHtmlPreviewDesktopDialog(
+                                context,
+                                html: widget.code,
+                              );
+                            }
+                          },
+                          splashColor: Platform.isIOS
+                              ? Colors.transparent
+                              : null,
+                          highlightColor: Platform.isIOS
+                              ? Colors.transparent
+                              : null,
+                          hoverColor: Platform.isIOS
+                              ? Colors.transparent
+                              : null,
+                          overlayColor: Platform.isIOS
+                              ? const WidgetStatePropertyAll(Colors.transparent)
+                              : null,
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 1,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Lucide.Eye,
+                                  size: 14,
+                                  color: _conversationMutedColor(context),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.codeBlockPreviewButton,
+                                  style: TextStyle(
+                                    fontSize: controlFontSize,
+                                    color: _conversationMutedColor(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      // Copy action: icon + label ("复制"/localized)
                       InkWell(
-                        onTap: () {
-                          final l10n = AppLocalizations.of(context)!;
-                          if (Platform.isAndroid || Platform.isIOS) {
-                            // Mobile: navigate to preview page
-                            Navigator.of(context).push(
-                              PageRouteBuilder(
-                                pageBuilder: (_, __, ___) =>
-                                    HtmlPreviewPage(html: widget.code),
-                                transitionDuration: const Duration(
-                                  milliseconds: 300,
-                                ),
-                                reverseTransitionDuration: const Duration(
-                                  milliseconds: 240,
-                                ),
-                                transitionsBuilder:
-                                    (context, anim, sec, child) {
-                                      final curved = CurvedAnimation(
-                                        parent: anim,
-                                        curve: Curves.easeOutCubic,
-                                        reverseCurve: Curves.easeInCubic,
-                                      );
-                                      return FadeTransition(
-                                        opacity: curved,
-                                        child: child,
-                                      );
-                                    },
-                              ),
-                            );
-                          } else if (Platform.isLinux) {
-                            // Linux: show not supported
-                            showAppSnackBar(
-                              context,
-                              message: l10n.htmlPreviewNotSupportedOnLinux,
-                              type: NotificationType.warning,
-                            );
-                          } else {
-                            // Desktop (macOS/Windows): open dialog
-                            showHtmlPreviewDesktopDialog(
-                              context,
-                              html: widget.code,
-                            );
-                          }
+                        onTap: () async {
+                          final copiedMessage = AppLocalizations.of(
+                            context,
+                          )!.chatMessageWidgetCopiedToClipboard;
+                          await Clipboard.setData(
+                            ClipboardData(text: widget.code),
+                          );
+                          if (!context.mounted) return;
+                          showAppSnackBar(
+                            context,
+                            message: copiedMessage,
+                            type: NotificationType.success,
+                          );
                         },
                         splashColor: Platform.isIOS ? Colors.transparent : null,
                         highlightColor: Platform.isIOS
@@ -1369,7 +1413,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           child: Row(
                             children: [
                               Icon(
-                                Lucide.Eye,
+                                Lucide.Copy,
                                 size: 14,
                                 color: _conversationMutedColor(context),
                               ),
@@ -1377,7 +1421,7 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                               Text(
                                 AppLocalizations.of(
                                   context,
-                                )!.codeBlockPreviewButton,
+                                )!.shareProviderSheetCopyButton,
                                 style: TextStyle(
                                   fontSize: controlFontSize,
                                   color: _conversationMutedColor(context),
@@ -1388,71 +1432,19 @@ class _CollapsibleCodeBlockState extends State<_CollapsibleCodeBlock> {
                           ),
                         ),
                       ),
-                    // Copy action: icon + label ("复制"/localized)
-                    InkWell(
-                      onTap: () async {
-                        final copiedMessage = AppLocalizations.of(
-                          context,
-                        )!.chatMessageWidgetCopiedToClipboard;
-                        await Clipboard.setData(
-                          ClipboardData(text: widget.code),
-                        );
-                        if (!context.mounted) return;
-                        showAppSnackBar(
-                          context,
-                          message: copiedMessage,
-                          type: NotificationType.success,
-                        );
-                      },
-                      splashColor: Platform.isIOS ? Colors.transparent : null,
-                      highlightColor: Platform.isIOS
-                          ? Colors.transparent
-                          : null,
-                      hoverColor: Platform.isIOS ? Colors.transparent : null,
-                      overlayColor: Platform.isIOS
-                          ? const WidgetStatePropertyAll(Colors.transparent)
-                          : null,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 3,
-                          vertical: 1,
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Lucide.Copy,
-                              size: 14,
-                              color: _conversationMutedColor(context),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              AppLocalizations.of(
-                                context,
-                              )!.shareProviderSheetCopyButton,
-                              style: TextStyle(
-                                fontSize: controlFontSize,
-                                color: _conversationMutedColor(context),
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                      const SizedBox(width: 4),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.25 : 0.0, // right -> down
+                        duration: const Duration(milliseconds: 180),
+                        curve: Curves.easeOutCubic,
+                        child: Icon(
+                          Lucide.ChevronRight,
+                          size: 16,
+                          color: _conversationMutedColor(context, alpha: 0.78),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    AnimatedRotation(
-                      turns: _expanded ? 0.25 : 0.0, // right -> down
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOutCubic,
-                      child: Icon(
-                        Lucide.ChevronRight,
-                        size: 16,
-                        color: _conversationMutedColor(context, alpha: 0.78),
-                      ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1851,90 +1843,33 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                   ),
                   child: Row(
                     children: [
-                    const SizedBox(width: 2),
-                    Text(
-                      'mermaid',
-                      style: TextStyle(
-                        fontSize: controlFontSize,
-                        fontWeight: FontWeight.w700,
-                        color: _conversationEmphasisColor(context),
-                        height: 1.0,
-                      ),
-                    ),
-                    const Spacer(),
-                    if (!ExportCaptureScope.of(context)) ...[
-                      // Copy action
-                      InkWell(
-                        onTap: () async {
-                          final copiedMessage = AppLocalizations.of(
-                            context,
-                          )!.chatMessageWidgetCopiedToClipboard;
-                          await Clipboard.setData(
-                            ClipboardData(text: widget.code),
-                          );
-                          if (!context.mounted) return;
-                          showAppSnackBar(
-                            context,
-                            message: copiedMessage,
-                            type: NotificationType.success,
-                          );
-                        },
-                        splashColor: Platform.isIOS ? Colors.transparent : null,
-                        highlightColor: Platform.isIOS
-                            ? Colors.transparent
-                            : null,
-                        hoverColor: Platform.isIOS ? Colors.transparent : null,
-                        overlayColor: Platform.isIOS
-                            ? const WidgetStatePropertyAll(Colors.transparent)
-                            : null,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 3,
-                            vertical: 1,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Lucide.Copy,
-                                size: 14,
-                                color: _conversationMutedColor(context),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                AppLocalizations.of(
-                                  context,
-                                )!.shareProviderSheetCopyButton,
-                                style: TextStyle(
-                                  fontSize: controlFontSize,
-                                  color: _conversationMutedColor(context),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
+                      const SizedBox(width: 2),
+                      Text(
+                        'mermaid',
+                        style: TextStyle(
+                          fontSize: controlFontSize,
+                          fontWeight: FontWeight.w700,
+                          color: _conversationEmphasisColor(context),
+                          height: 1.0,
                         ),
                       ),
-                      if (handle != null) ...[
-                        const SizedBox(width: 4),
+                      const Spacer(),
+                      if (!ExportCaptureScope.of(context)) ...[
+                        // Copy action
                         InkWell(
                           onTap: () async {
-                            final l10n = AppLocalizations.of(context)!;
-                            final ok = await handle.exportPng();
+                            final copiedMessage = AppLocalizations.of(
+                              context,
+                            )!.chatMessageWidgetCopiedToClipboard;
+                            await Clipboard.setData(
+                              ClipboardData(text: widget.code),
+                            );
                             if (!context.mounted) return;
-                            if (!ok) {
-                              showAppSnackBar(
-                                context,
-                                message: l10n.mermaidExportFailed,
-                                type: NotificationType.error,
-                              );
-                            } else if (Platform.isAndroid || Platform.isIOS) {
-                              showAppSnackBar(
-                                context,
-                                message: l10n.imageViewerPageSaveSuccess,
-                                type: NotificationType.success,
-                              );
-                            }
+                            showAppSnackBar(
+                              context,
+                              message: copiedMessage,
+                              type: NotificationType.success,
+                            );
                           },
                           splashColor: Platform.isIOS
                               ? Colors.transparent
@@ -1950,29 +1885,95 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                               : null,
                           borderRadius: BorderRadius.circular(6),
                           child: Padding(
-                            padding: const EdgeInsets.all(3),
-                            child: Icon(
-                              Lucide.Download,
-                              size: 14,
-                              color: _conversationMutedColor(context),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 3,
+                              vertical: 1,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Lucide.Copy,
+                                  size: 14,
+                                  color: _conversationMutedColor(context),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.shareProviderSheetCopyButton,
+                                  style: TextStyle(
+                                    fontSize: controlFontSize,
+                                    color: _conversationMutedColor(context),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (handle != null) ...[
+                          const SizedBox(width: 4),
+                          InkWell(
+                            onTap: () async {
+                              final l10n = AppLocalizations.of(context)!;
+                              final ok = await handle.exportPng();
+                              if (!context.mounted) return;
+                              if (!ok) {
+                                showAppSnackBar(
+                                  context,
+                                  message: l10n.mermaidExportFailed,
+                                  type: NotificationType.error,
+                                );
+                              } else if (Platform.isAndroid || Platform.isIOS) {
+                                showAppSnackBar(
+                                  context,
+                                  message: l10n.imageViewerPageSaveSuccess,
+                                  type: NotificationType.success,
+                                );
+                              }
+                            },
+                            splashColor: Platform.isIOS
+                                ? Colors.transparent
+                                : null,
+                            highlightColor: Platform.isIOS
+                                ? Colors.transparent
+                                : null,
+                            hoverColor: Platform.isIOS
+                                ? Colors.transparent
+                                : null,
+                            overlayColor: Platform.isIOS
+                                ? const WidgetStatePropertyAll(
+                                    Colors.transparent,
+                                  )
+                                : null,
+                            borderRadius: BorderRadius.circular(6),
+                            child: Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: Icon(
+                                Lucide.Download,
+                                size: 14,
+                                color: _conversationMutedColor(context),
+                              ),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: _expanded ? 0.25 : 0.0,
+                          duration: const Duration(milliseconds: 180),
+                          curve: Curves.easeOutCubic,
+                          child: Icon(
+                            Lucide.ChevronRight,
+                            size: 16,
+                            color: _conversationMutedColor(
+                              context,
+                              alpha: 0.78,
                             ),
                           ),
                         ),
                       ],
-                      const SizedBox(width: 4),
-                      AnimatedRotation(
-                        turns: _expanded ? 0.25 : 0.0,
-                        duration: const Duration(milliseconds: 180),
-                        curve: Curves.easeOutCubic,
-                        child: Icon(
-                          Lucide.ChevronRight,
-                          size: 16,
-                          color: _conversationMutedColor(context, alpha: 0.78),
-                        ),
-                      ),
                     ],
-                  ],
-                ),
+                  ),
                 ),
               ),
             ),
@@ -2060,16 +2061,15 @@ class _MermaidBlockState extends State<_MermaidBlock> {
                                       child: SelectableHighlightView(
                                         widget.code,
                                         language: 'plaintext',
-                                        theme:
-                                            MarkdownWithCodeHighlight._transparentBgTheme(
-                                              MarkdownWithCodeHighlight._codeTextTheme(
-                                                Theme.of(context).brightness ==
-                                                        Brightness.dark
-                                                    ? atomOneDarkReasonableTheme
-                                                    : githubTheme,
-                                                codeTextColor,
-                                              ),
-                                            ),
+                                        theme: MarkdownWithCodeHighlight._transparentBgTheme(
+                                          MarkdownWithCodeHighlight._codeTextTheme(
+                                            Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? atomOneDarkReasonableTheme
+                                                : githubTheme,
+                                            codeTextColor,
+                                          ),
+                                        ),
                                         padding: EdgeInsets.zero,
                                         textStyle: TextStyle(
                                           fontFamily: 'monospace',
@@ -2530,7 +2530,6 @@ class LabelValueLineMd extends InlineMd {
     rawLabel = rawLabel.replaceFirst(RegExp(r"[：:]+$"), '');
 
     final t = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
     // 继承基础样式，确保字间距/行高一致
     final base = _markdownResolvedTextStyle(
       context,
@@ -2580,9 +2579,7 @@ class ModernBlockQuote extends InlineMd {
     final sb = StringBuffer();
     for (final line in m.split('\n')) {
       if (RegExp(r'^\ *>').hasMatch(line)) {
-        var sub = line.trimLeft();
-        sub = sub.substring(1); // remove '>'
-        if (sub.startsWith(' ')) sub = sub.substring(1);
+        final sub = line.trimLeft().replaceFirst(RegExp(r'^(?:>\s*)+'), '');
         sb.writeln(sub);
       } else {
         sb.writeln(line);
@@ -2648,9 +2645,8 @@ class ModernCheckBoxMd extends BlockMd {
 
     final contentStyle = (config.style ?? const TextStyle()).copyWith(
       decoration: checked ? TextDecoration.lineThrough : null,
-      color: (config.style?.color ?? _conversationBaseColor(context)).withValues(
-        alpha: checked ? 0.75 : 1.0,
-      ),
+      color: (config.style?.color ?? _conversationBaseColor(context))
+          .withValues(alpha: checked ? 0.75 : 1.0),
     );
 
     final child = MdWidget(
@@ -2707,9 +2703,8 @@ class ModernRadioMd extends BlockMd {
     final cs = Theme.of(context).colorScheme;
 
     final contentStyle = (config.style ?? const TextStyle()).copyWith(
-      color: (config.style?.color ?? _conversationBaseColor(context)).withValues(
-        alpha: selected ? 0.95 : 1.0,
-      ),
+      color: (config.style?.color ?? _conversationBaseColor(context))
+          .withValues(alpha: selected ? 0.95 : 1.0),
     );
 
     final child = MdWidget(

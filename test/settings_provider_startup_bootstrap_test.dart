@@ -17,6 +17,9 @@ void main() {
         'display_new_chat_on_launch_v1': false,
         'display_desktop_show_tray_v1': true,
         'display_desktop_minimize_to_tray_on_close_v1': true,
+        'display_always_show_message_nav_v1': true,
+        'display_ui_text_light_color_v1': 0xFF123456,
+        'display_ui_text_dark_color_v1': 0xFFABCDEF,
         'display_app_font_family_v1': 'Segoe UI',
         'display_code_font_family_v1': 'Consolas',
         'app_locale_v1': 'en_US',
@@ -45,6 +48,15 @@ void main() {
       expect(settings.newChatOnLaunch, isFalse);
       expect(settings.desktopShowTray, isTrue);
       expect(settings.desktopMinimizeToTrayOnClose, isTrue);
+      expect(settings.alwaysShowMessageNavButtons, isTrue);
+      expect(
+        settings.customUiTextColor(Brightness.light),
+        const Color(0xFF123456),
+      );
+      expect(
+        settings.customUiTextColor(Brightness.dark),
+        const Color(0xFFABCDEF),
+      );
       expect(settings.appFontFamily, 'Segoe UI');
       expect(settings.codeFontFamily, 'Consolas');
       expect(settings.appLocaleForMaterialApp, const Locale('en', 'US'));

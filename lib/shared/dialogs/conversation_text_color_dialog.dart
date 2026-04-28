@@ -1,5 +1,3 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,7 +5,7 @@ import '../../core/providers/settings_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../theme/theme_factory.dart' show getPlatformFontFallback;
 
-enum ConversationColorTarget { text, codeBlock }
+enum ConversationColorTarget { text, codeBlock, ui }
 
 enum _ConversationTextTone { light, dark }
 
@@ -30,6 +28,13 @@ Future<void> showConversationCodeBlockTextColorDialog(
   );
 }
 
+Future<void> showUiTextColorDialog(BuildContext context) async {
+  await showConversationTextColorDialog(
+    context,
+    target: ConversationColorTarget.ui,
+  );
+}
+
 class ConversationTextColorPreview extends StatelessWidget {
   const ConversationTextColorPreview({
     super.key,
@@ -47,21 +52,30 @@ class ConversationTextColorPreview extends StatelessWidget {
     final sp = context.watch<SettingsProvider>();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final active = target == ConversationColorTarget.codeBlock
-        ? sp.resolveConversationCodeTextColor(
-            theme.brightness,
-            fallback: theme.colorScheme.onSurface,
-          )
-        : sp.resolveConversationTextColor(
-            theme.brightness,
-            fallback: theme.colorScheme.onSurface,
-          );
-    final light = target == ConversationColorTarget.codeBlock
-        ? sp.conversationCodeTextLightColor
-        : sp.conversationTextLightColor;
-    final dark = target == ConversationColorTarget.codeBlock
-        ? sp.conversationCodeTextDarkColor
-        : sp.conversationTextDarkColor;
+    final active = switch (target) {
+      ConversationColorTarget.codeBlock => sp.resolveConversationCodeTextColor(
+        theme.brightness,
+        fallback: theme.colorScheme.onSurface,
+      ),
+      ConversationColorTarget.ui => sp.resolveUiTextColor(
+        theme.brightness,
+        fallback: theme.colorScheme.onSurface,
+      ),
+      ConversationColorTarget.text => sp.resolveConversationTextColor(
+        theme.brightness,
+        fallback: theme.colorScheme.onSurface,
+      ),
+    };
+    final light = switch (target) {
+      ConversationColorTarget.codeBlock => sp.conversationCodeTextLightColor,
+      ConversationColorTarget.ui => sp.uiTextLightColor,
+      ConversationColorTarget.text => sp.conversationTextLightColor,
+    };
+    final dark = switch (target) {
+      ConversationColorTarget.codeBlock => sp.conversationCodeTextDarkColor,
+      ConversationColorTarget.ui => sp.uiTextDarkColor,
+      ConversationColorTarget.text => sp.conversationTextDarkColor,
+    };
     final borderColor = theme.colorScheme.outlineVariant.withValues(
       alpha: 0.24,
     );
@@ -169,12 +183,16 @@ class _ConversationTextColorDialogState
   void initState() {
     super.initState();
     final sp = context.read<SettingsProvider>();
-    _lightColor = widget.target == ConversationColorTarget.codeBlock
-        ? sp.conversationCodeTextLightColor
-        : sp.conversationTextLightColor;
-    _darkColor = widget.target == ConversationColorTarget.codeBlock
-        ? sp.conversationCodeTextDarkColor
-        : sp.conversationTextDarkColor;
+    _lightColor = switch (widget.target) {
+      ConversationColorTarget.codeBlock => sp.conversationCodeTextLightColor,
+      ConversationColorTarget.ui => sp.uiTextLightColor,
+      ConversationColorTarget.text => sp.conversationTextLightColor,
+    };
+    _darkColor = switch (widget.target) {
+      ConversationColorTarget.codeBlock => sp.conversationCodeTextDarkColor,
+      ConversationColorTarget.ui => sp.uiTextDarkColor,
+      ConversationColorTarget.text => sp.conversationTextDarkColor,
+    };
   }
 
   @override
@@ -195,6 +213,7 @@ class _ConversationTextColorDialogState
         ? _darkColor
         : _lightColor;
     final isCodeTarget = widget.target == ConversationColorTarget.codeBlock;
+    final isUiTarget = widget.target == ConversationColorTarget.ui;
     final hsv = HSVColor.fromColor(current);
     final previewBg = _tone == _ConversationTextTone.dark
         ? const Color(0xFF121214)
@@ -206,14 +225,20 @@ class _ConversationTextColorDialogState
       0.12,
     );
     final previewSoft = previewText.withValues(alpha: 0.68);
-    final previewAccent = Color.lerp(previewText, cs.primary, 0.52) ?? cs.primary;
+    final previewAccent = isUiTarget
+        ? previewText
+        : (Color.lerp(previewText, cs.primary, 0.52) ?? cs.primary);
+    final title = switch (widget.target) {
+      ConversationColorTarget.codeBlock =>
+        l10n.displaySettingsPageCodeBlockTextColorTitle,
+      ConversationColorTarget.ui =>
+        l10n.displaySettingsPageUiTextColorDialogTitle,
+      ConversationColorTarget.text =>
+        l10n.displaySettingsPageConversationTextColorDialogTitle,
+    };
 
     return AlertDialog(
-      title: Text(
-        isCodeTarget
-            ? l10n.displaySettingsPageCodeBlockTextColorTitle
-            : l10n.displaySettingsPageConversationTextColorDialogTitle,
-      ),
+      title: Text(title),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -263,27 +288,24 @@ class _ConversationTextColorDialogState
               value: hsv.hue,
               max: 360,
               displayValue: hsv.hue.round().toString(),
-              onChanged: (value) => _setCurrentColor(
-                hsv.withHue(value).toColor(),
-              ),
+              onChanged: (value) =>
+                  _setCurrentColor(hsv.withHue(value).toColor()),
             ),
             _HsvSliderRow(
               label: 'S',
               value: hsv.saturation * 100,
               max: 100,
               displayValue: '${(hsv.saturation * 100).round()}%',
-              onChanged: (value) => _setCurrentColor(
-                hsv.withSaturation(value / 100).toColor(),
-              ),
+              onChanged: (value) =>
+                  _setCurrentColor(hsv.withSaturation(value / 100).toColor()),
             ),
             _HsvSliderRow(
               label: 'V',
               value: hsv.value * 100,
               max: 100,
               displayValue: '${(hsv.value * 100).round()}%',
-              onChanged: (value) => _setCurrentColor(
-                hsv.withValue(value / 100).toColor(),
-              ),
+              onChanged: (value) =>
+                  _setCurrentColor(hsv.withValue(value / 100).toColor()),
             ),
           ],
         ),
@@ -297,18 +319,26 @@ class _ConversationTextColorDialogState
                 : Brightness.light;
             if (isCodeTarget) {
               sp.resetConversationCodeTextColor(toneBrightness);
+            } else if (isUiTarget) {
+              sp.resetUiTextColor(toneBrightness);
             } else {
               sp.resetConversationTextColor(toneBrightness);
             }
             setState(() {
               if (_tone == _ConversationTextTone.dark) {
-                _darkColor = isCodeTarget
-                    ? sp.conversationCodeTextDarkColor
-                    : sp.conversationTextDarkColor;
+                _darkColor = switch (widget.target) {
+                  ConversationColorTarget.codeBlock =>
+                    sp.conversationCodeTextDarkColor,
+                  ConversationColorTarget.ui => sp.uiTextDarkColor,
+                  ConversationColorTarget.text => sp.conversationTextDarkColor,
+                };
               } else {
-                _lightColor = isCodeTarget
-                    ? sp.conversationCodeTextLightColor
-                    : sp.conversationTextLightColor;
+                _lightColor = switch (widget.target) {
+                  ConversationColorTarget.codeBlock =>
+                    sp.conversationCodeTextLightColor,
+                  ConversationColorTarget.ui => sp.uiTextLightColor,
+                  ConversationColorTarget.text => sp.conversationTextLightColor,
+                };
               }
             });
           },
@@ -320,16 +350,20 @@ class _ConversationTextColorDialogState
         ),
         FilledButton(
           onPressed: () async {
+            final navigator = Navigator.of(context);
             final sp = context.read<SettingsProvider>();
             if (isCodeTarget) {
               await sp.setConversationCodeTextLightColor(_lightColor);
               await sp.setConversationCodeTextDarkColor(_darkColor);
+            } else if (isUiTarget) {
+              await sp.setUiTextLightColor(_lightColor);
+              await sp.setUiTextDarkColor(_darkColor);
             } else {
               await sp.setConversationTextLightColor(_lightColor);
               await sp.setConversationTextDarkColor(_darkColor);
             }
             if (!mounted) return;
-            Navigator.of(context).pop();
+            navigator.pop();
           },
           child: Text(l10n.assistantEditEmojiDialogSave),
         ),

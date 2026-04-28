@@ -6206,6 +6206,18 @@ abstract class AppLocalizations {
   /// **'Show quick jump buttons when scrolling'**
   String get displaySettingsPageMessageNavButtonsSubtitle;
 
+  /// No description provided for @displaySettingsPageAlwaysShowMessageNavButtonsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Always show message navigation buttons'**
+  String get displaySettingsPageAlwaysShowMessageNavButtonsTitle;
+
+  /// No description provided for @displaySettingsPageAlwaysShowMessageNavButtonsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep quick jump buttons visible in chat'**
+  String get displaySettingsPageAlwaysShowMessageNavButtonsSubtitle;
+
   /// No description provided for @displaySettingsPageUseNewAssistantAvatarUxTitle.
   ///
   /// In en, this message translates to:
@@ -6445,6 +6457,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Code Block Text Color'**
   String get displaySettingsPageCodeBlockTextColorTitle;
+
+  /// No description provided for @displaySettingsPageUiTextColorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface Text Color'**
+  String get displaySettingsPageUiTextColorTitle;
+
+  /// No description provided for @displaySettingsPageUiTextColorDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Interface Text Color'**
+  String get displaySettingsPageUiTextColorDialogTitle;
 
   /// No description provided for @desktopSettingsFontsTitle.
   ///

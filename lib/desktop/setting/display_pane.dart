@@ -27,6 +27,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _RowDivider(),
                   _ConversationCodeTextColorRow(),
                   _RowDivider(),
+                  _UiTextColorRow(),
+                  _RowDivider(),
                   _ToggleRowPureBackground(),
                   _RowDivider(),
                   _ChatMessageBackgroundRow(),
@@ -119,6 +121,8 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ToggleRowShowUpdates(),
                   _RowDivider(),
                   _ToggleRowMsgNavButtons(),
+                  _RowDivider(),
+                  _ToggleRowAlwaysShowMsgNavButtons(),
                   _RowDivider(),
                   _ToggleRowShowChatListDate(),
                   _RowDivider(),
@@ -420,6 +424,24 @@ class _ConversationCodeTextColorRow extends StatelessWidget {
         child: const ConversationTextColorPreview(
           showLabels: true,
           target: ConversationColorTarget.codeBlock,
+        ),
+      ),
+    );
+  }
+}
+
+class _UiTextColorRow extends StatelessWidget {
+  const _UiTextColorRow();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return _LabeledRow(
+      label: l10n.displaySettingsPageUiTextColorTitle,
+      trailing: GestureDetector(
+        onTap: () => showUiTextColorDialog(context),
+        child: const ConversationTextColorPreview(
+          showLabels: true,
+          target: ConversationColorTarget.ui,
         ),
       ),
     );
@@ -1528,14 +1550,10 @@ class _BorderInput extends StatefulWidget {
     required this.controller,
     required this.onSubmitted,
     required this.onFocusLost,
-    this.keyboardType = TextInputType.number,
-    this.inputFormatters,
   });
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
   final ValueChanged<String> onFocusLost;
-  final TextInputType keyboardType;
-  final List<TextInputFormatter>? inputFormatters;
   @override
   State<_BorderInput> createState() => _BorderInputState();
 }
@@ -1590,10 +1608,8 @@ class _BorderInputState extends State<_BorderInput> {
         controller: widget.controller,
         focusNode: _focus,
         textAlign: TextAlign.center,
-        keyboardType: widget.keyboardType,
-        inputFormatters:
-            widget.inputFormatters ??
-            [FilteringTextInputFormatter.digitsOnly],
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(
           isDense: true,
           filled: true,
@@ -2538,6 +2554,24 @@ class _ToggleRowMsgNavButtons extends StatelessWidget {
       value: sp.showMessageNavButtons,
       onChanged: (v) =>
           context.read<SettingsProvider>().setShowMessageNavButtons(v),
+    );
+  }
+}
+
+class _ToggleRowAlwaysShowMsgNavButtons extends StatelessWidget {
+  const _ToggleRowAlwaysShowMsgNavButtons();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: l10n.displaySettingsPageAlwaysShowMessageNavButtonsTitle,
+      value: sp.alwaysShowMessageNavButtons,
+      onChanged: sp.showMessageNavButtons
+          ? (v) => context
+                .read<SettingsProvider>()
+                .setAlwaysShowMessageNavButtons(v)
+          : null,
     );
   }
 }

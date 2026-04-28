@@ -387,11 +387,13 @@ class ScrollNavigationButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final showSetting = context.watch<SettingsProvider>().showMessageNavButtons;
+    final settings = context.watch<SettingsProvider>();
+    final showSetting = settings.showMessageNavButtons;
     if (!showSetting || !hasMessages) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bottomOffset = inputBarHeight + 12;
+    final visible = settings.alwaysShowMessageNavButtons || showJumpToBottom;
 
     return Stack(
       children: [
@@ -402,15 +404,15 @@ class ScrollNavigationButtons extends StatelessWidget {
             top: false,
             bottom: false,
             child: IgnorePointer(
-              ignoring: !showJumpToBottom,
+              ignoring: !visible,
               child: AnimatedScale(
-                scale: showJumpToBottom ? 1.0 : 0.9,
+                scale: visible ? 1.0 : 0.9,
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
-                  opacity: showJumpToBottom ? 1 : 0,
+                  opacity: visible ? 1 : 0,
                   child: Padding(
                     padding: EdgeInsets.only(right: 16, bottom: bottomOffset),
                     child: _ScrollButton(
@@ -431,15 +433,15 @@ class ScrollNavigationButtons extends StatelessWidget {
             top: false,
             bottom: false,
             child: IgnorePointer(
-              ignoring: !showJumpToBottom,
+              ignoring: !visible,
               child: AnimatedScale(
-                scale: showJumpToBottom ? 1.0 : 0.9,
+                scale: visible ? 1.0 : 0.9,
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
                 child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
-                  opacity: showJumpToBottom ? 1 : 0,
+                  opacity: visible ? 1 : 0,
                   child: Padding(
                     padding: EdgeInsets.only(
                       right: 16,

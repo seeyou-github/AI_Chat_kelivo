@@ -3198,6 +3198,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get displaySettingsPageMessageNavButtonsSubtitle => '滚动时显示快速跳转按钮';
 
   @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsTitle =>
+      '消息导航按钮始终显示';
+
+  @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsSubtitle =>
+      '在聊天界面中始终显示快速跳转按钮';
+
+  @override
   String get displaySettingsPageUseNewAssistantAvatarUxTitle => '聊天标题栏显示助手头像';
 
   @override
@@ -3317,6 +3325,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
+
+  @override
+  String get displaySettingsPageUiTextColorTitle => '界面文字颜色';
+
+  @override
+  String get displaySettingsPageUiTextColorDialogTitle => '界面文字颜色';
 
   @override
   String get desktopSettingsFontsTitle => '字体设置';
@@ -7538,6 +7552,14 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   String get displaySettingsPageMessageNavButtonsSubtitle => '滚动时显示快速跳转按钮';
 
   @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsTitle =>
+      '消息导航按钮始终显示';
+
+  @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsSubtitle =>
+      '在聊天界面中始终显示快速跳转按钮';
+
+  @override
   String get displaySettingsPageUseNewAssistantAvatarUxTitle => '聊天标题栏显示助手头像';
 
   @override
@@ -7657,6 +7679,12 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageCodeBlockTextColorTitle => '代码块文字颜色';
+
+  @override
+  String get displaySettingsPageUiTextColorTitle => '界面文字颜色';
+
+  @override
+  String get displaySettingsPageUiTextColorDialogTitle => '界面文字颜色';
 
   @override
   String get desktopSettingsFontsTitle => '字体设置';
@@ -11876,6 +11904,14 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get displaySettingsPageMessageNavButtonsSubtitle => '滾動時顯示快速跳轉按鈕';
 
   @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsTitle =>
+      '訊息導航按鈕一律顯示';
+
+  @override
+  String get displaySettingsPageAlwaysShowMessageNavButtonsSubtitle =>
+      '在聊天介面中一律顯示快速跳轉按鈕';
+
+  @override
   String get displaySettingsPageUseNewAssistantAvatarUxTitle => '聊天標題欄顯示助手頭像';
 
   @override
@@ -11996,6 +12032,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get displaySettingsPageCodeBlockTextColorTitle => '程式碼區塊文字顏色';
+
+  @override
+  String get displaySettingsPageUiTextColorTitle => '介面文字顏色';
+
+  @override
+  String get displaySettingsPageUiTextColorDialogTitle => '介面文字顏色';
 
   @override
   String get desktopSettingsFontsTitle => '字體設定';

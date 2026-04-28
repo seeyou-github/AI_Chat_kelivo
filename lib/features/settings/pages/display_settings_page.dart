@@ -27,33 +27,39 @@ class DisplaySettingsPage extends StatefulWidget {
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
   String _chatBaseFontSizeLabel(BuildContext context) {
-    return AppLocalizations.of(context)!
-        .displaySettingsPageChatBaseFontSizeTitle;
+    return AppLocalizations.of(
+      context,
+    )!.displaySettingsPageChatBaseFontSizeTitle;
   }
 
   String _markdownBaseFontSizeLabel(BuildContext context) {
-    return AppLocalizations.of(context)!
-        .displaySettingsPageMarkdownBaseFontSizeTitle;
+    return AppLocalizations.of(
+      context,
+    )!.displaySettingsPageMarkdownBaseFontSizeTitle;
   }
 
   String _markdownHeadingFontSizeLabel(BuildContext context) {
-    return AppLocalizations.of(context)!
-        .displaySettingsPageMarkdownHeadingFontSizeTitle;
+    return AppLocalizations.of(
+      context,
+    )!.displaySettingsPageMarkdownHeadingFontSizeTitle;
   }
 
   String _markdownCodeFontSizeLabel(BuildContext context) {
-    return AppLocalizations.of(context)!
-        .displaySettingsPageMarkdownCodeFontSizeTitle;
+    return AppLocalizations.of(
+      context,
+    )!.displaySettingsPageMarkdownCodeFontSizeTitle;
   }
 
   String _markdownCodeLineHeightLabel(BuildContext context) {
-    return AppLocalizations.of(context)!
-        .displaySettingsPageMarkdownCodeLineHeightTitle;
+    return AppLocalizations.of(
+      context,
+    )!.displaySettingsPageMarkdownCodeLineHeightTitle;
   }
 
   String _chatBubbleHorizontalMarginLabel(BuildContext context) {
-    return AppLocalizations.of(context)!
-        .displaySettingsPageChatBubbleHorizontalMarginTitle;
+    return AppLocalizations.of(
+      context,
+    )!.displaySettingsPageChatBubbleHorizontalMarginTitle;
   }
 
   @override
@@ -258,7 +264,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 label: _chatBubbleHorizontalMarginLabel(context),
                 detailBuilder: (ctx) {
                   final value =
-                      ctx.watch<SettingsProvider>().chatBubbleHorizontalMarginFactor *
+                      ctx
+                          .watch<SettingsProvider>()
+                          .chatBubbleHorizontalMarginFactor *
                       100;
                   return Text(
                     '${value.toStringAsFixed(1)}%',
@@ -374,8 +382,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 icon: Lucide.Type,
                 label: _markdownBaseFontSizeLabel(context),
                 detailBuilder: (ctx) {
-                  final size =
-                      ctx.watch<SettingsProvider>().markdownBaseFontSize;
+                  final size = ctx
+                      .watch<SettingsProvider>()
+                      .markdownBaseFontSize;
                   return Text(
                     '${size.toStringAsFixed(0)}pt',
                     style: TextStyle(
@@ -400,8 +409,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 icon: Lucide.Code,
                 label: _markdownCodeFontSizeLabel(context),
                 detailBuilder: (ctx) {
-                  final size =
-                      ctx.watch<SettingsProvider>().markdownCodeFontSize;
+                  final size = ctx
+                      .watch<SettingsProvider>()
+                      .markdownCodeFontSize;
                   return Text(
                     '${size.toStringAsFixed(0)}pt',
                     style: TextStyle(
@@ -418,8 +428,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                 icon: Lucide.TextSelect,
                 label: _markdownCodeLineHeightLabel(context),
                 detailBuilder: (ctx) {
-                  final value =
-                      ctx.watch<SettingsProvider>().markdownCodeLineHeight;
+                  final value = ctx
+                      .watch<SettingsProvider>()
+                      .markdownCodeLineHeight;
                   return Text(
                     value.toStringAsFixed(2),
                     style: TextStyle(
@@ -896,7 +907,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                         l10n.displaySettingsPageChatFontSampleText,
                         style: TextStyle(
                           fontSize:
-                              context.watch<SettingsProvider>().chatBaseFontSize *
+                              context
+                                  .watch<SettingsProvider>()
+                                  .chatBaseFontSize *
                               context.watch<SettingsProvider>().chatFontScale,
                         ),
                       ),
@@ -959,7 +972,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                   .toDouble(),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Theme.of(ctx).colorScheme.primary.withValues(alpha: 0.10),
+                color: Theme.of(
+                  ctx,
+                ).colorScheme.primary.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Text(
@@ -2274,6 +2289,16 @@ class BehaviorStartupSettingsPage extends StatelessWidget {
                 onChanged: (v) => context
                     .read<SettingsProvider>()
                     .setShowMessageNavButtons(v),
+              ),
+              _iosDivider(context),
+              _iosSwitchRow(
+                context,
+                icon: Lucide.ChevronsUpDown,
+                label: l10n.displaySettingsPageAlwaysShowMessageNavButtonsTitle,
+                value: sp.alwaysShowMessageNavButtons,
+                onChanged: (v) => context
+                    .read<SettingsProvider>()
+                    .setAlwaysShowMessageNavButtons(v),
               ),
               _iosDivider(context),
               _iosSwitchRow(

@@ -28,7 +28,7 @@ TextStyle? _findTextSpanStyle(
 ]) {
   if (span is! TextSpan) return null;
   final effectiveStyle = inheritedStyle?.merge(span.style) ?? span.style;
-  if ((span.text ?? '') == target) {
+  if ((span.text ?? '').contains(target)) {
     return effectiveStyle;
   }
   for (final child in span.children ?? const <InlineSpan>[]) {
@@ -72,16 +72,20 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('MarkdownWithCodeHighlight font sizes', () {
-    testWidgets('blockquote and table use code font size while links use body size', (
+    testWidgets('blockquote, table, and links follow markdown code font size', (
       tester,
     ) async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsProvider();
+      const initialCodeSize = 13.0;
+      const updatedCodeSize = 17.0;
       await settings.setMarkdownBaseFontSize(21);
-      await settings.setMarkdownCodeFontSize(13);
+      await settings.setMarkdownCodeFontSize(initialCodeSize);
 
       const markdown = '''
 > 引用文本
+>> 二级引用
+>>> 三级引用
 
 | 左列 | 右列 |
 | --- | --- |
@@ -98,11 +102,22 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(_fontSizeForText(tester, '引用文本'), 13);
-      expect(_fontSizeForText(tester, '左列'), 13);
-      expect(_fontSizeForText(tester, '表格内容'), 13);
-      expect(_fontSizeForText(tester, '表格链接'), 13);
-      expect(_fontSizeForText(tester, '正文链接'), 21);
+      void expectMarkdownCodeSize(double expected) {
+        expect(_fontSizeForText(tester, '引用文本'), expected);
+        expect(_fontSizeForText(tester, '二级引用'), expected);
+        expect(_fontSizeForText(tester, '三级引用'), expected);
+        expect(_fontSizeForText(tester, '左列'), expected);
+        expect(_fontSizeForText(tester, '表格内容'), expected);
+        expect(_fontSizeForText(tester, '表格链接'), expected);
+        expect(_fontSizeForText(tester, '正文链接'), expected);
+      }
+
+      expectMarkdownCodeSize(initialCodeSize);
+
+      await settings.setMarkdownCodeFontSize(updatedCodeSize);
+      await tester.pump();
+
+      expectMarkdownCodeSize(updatedCodeSize);
     });
   });
 }
