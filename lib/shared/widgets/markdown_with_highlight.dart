@@ -104,14 +104,28 @@ double _neutralizedChatScale(BuildContext context) {
   return (currentScale / chatScale).clamp(0.5, 3.0);
 }
 
+class _ChatScaleNeutralizerScope extends InheritedWidget {
+  const _ChatScaleNeutralizerScope({required super.child});
+
+  static bool isActive(BuildContext context) {
+    return context
+            .dependOnInheritedWidgetOfExactType<_ChatScaleNeutralizerScope>() !=
+        null;
+  }
+
+  @override
+  bool updateShouldNotify(_ChatScaleNeutralizerScope oldWidget) => false;
+}
+
 Widget _withoutChatScale(BuildContext context, Widget child) {
   final media = MediaQuery.maybeOf(context);
   if (media == null) return child;
+  if (_ChatScaleNeutralizerScope.isActive(context)) return child;
   return MediaQuery(
     data: media.copyWith(
       textScaler: TextScaler.linear(_neutralizedChatScale(context)),
     ),
-    child: child,
+    child: _ChatScaleNeutralizerScope(child: child),
   );
 }
 
