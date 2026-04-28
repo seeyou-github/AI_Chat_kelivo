@@ -16,6 +16,18 @@ void main() {
       expect(size, const Size(1440, 900));
     });
 
+    test('provides a synchronous default startup size for fast launch', () {
+      final size = const WindowSizeManager().getDefaultInitialSize();
+
+      expect(
+        size,
+        const Size(
+          WindowSizeManager.defaultWindowWidth,
+          WindowSizeManager.defaultWindowHeight,
+        ),
+      );
+    });
+
     test('clamps saved startup size to supported bounds', () async {
       SharedPreferences.setMockInitialValues({
         'window_width_v1': 320.0,

@@ -23,6 +23,7 @@ class DesktopWindowController with WindowListener {
     String? title,
     SharedPreferences? initialPrefs,
     bool centerOnStartup = true,
+    bool useDefaultSizeWhenPrefsMissing = false,
   }) async {
     if (kIsWeb) return;
     if (!(defaultTargetPlatform == TargetPlatform.windows ||
@@ -38,8 +39,9 @@ class DesktopWindowController with WindowListener {
     _attachListeners();
     // Windows custom title bar is handled in main (TitleBarStyle.hidden)
 
-    final initialSizeFuture = _sizeMgr.getInitialSize(prefs: initialPrefs);
-    final initialSize = await initialSizeFuture;
+    final initialSize = useDefaultSizeWhenPrefsMissing && initialPrefs == null
+        ? _sizeMgr.getDefaultInitialSize()
+        : await _sizeMgr.getInitialSize(prefs: initialPrefs);
     const minSize = Size(
       WindowSizeManager.minWindowWidth,
       WindowSizeManager.minWindowHeight,

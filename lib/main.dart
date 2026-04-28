@@ -53,6 +53,7 @@ final RouteObserver<ModalRoute<dynamic>> routeObserver =
 bool _didCheckUpdates = false; // one-time update check flag
 bool _didEnsureAssistants = false; // ensure defaults after l10n ready
 SharedPreferences? _bootstrapPrefs;
+Future<SharedPreferences?>? _bootstrapPrefsFuture;
 bool _didScheduleDeferredStartupTasks = false;
 bool _didWarmSystemFonts = false;
 bool _didInitDesktopHotkeys = false;
@@ -67,12 +68,12 @@ Future<void> main() async {
       await WindowsPortableStorage.installIfNeeded();
       WindowsPortablePathProvider.installIfReady();
       FlutterLogger.installGlobalHandlers();
-      try {
-        _bootstrapPrefs = await SharedPreferences.getInstance();
-        final enabled =
-            _bootstrapPrefs!.getBool('flutter_log_enabled_v1') ?? false;
-        unawaited(FlutterLogger.setEnabled(enabled));
-      } catch (_) {}
+      final fastWindowsStartup =
+          defaultTargetPlatform == TargetPlatform.windows;
+      _bootstrapPrefsFuture = _loadBootstrapPrefs();
+      if (!fastWindowsStartup) {
+        _bootstrapPrefs = await _bootstrapPrefsFuture;
+      }
       // Trim Flutter global image cache to reduce memory pressure from large images
       try {
         PaintingBinding.instance.imageCache.maximumSize = 200;
@@ -80,7 +81,10 @@ Future<void> main() async {
             48 << 20; // ~48MB
       } catch (_) {}
       // Desktop (Windows) window setup: hide native title bar for custom Flutter bar
-      await _initDesktopWindow(initialPrefs: _bootstrapPrefs);
+      await _initDesktopWindow(
+        initialPrefs: _bootstrapPrefs,
+        useDefaultSizeWhenPrefsMissing: fastWindowsStartup,
+      );
       // Avoid preloading all system fonts at launch (huge memory on desktop)
       // Debug logging and global error handlers were enabled previously for diagnosis.
       // They are commented out now per request to reduce log noise.
@@ -104,7 +108,22 @@ Future<void> main() async {
   );
 }
 
-Future<void> _initDesktopWindow({SharedPreferences? initialPrefs}) async {
+Future<SharedPreferences?> _loadBootstrapPrefs() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    _bootstrapPrefs = prefs;
+    final enabled = prefs.getBool('flutter_log_enabled_v1') ?? false;
+    unawaited(FlutterLogger.setEnabled(enabled));
+    return prefs;
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<void> _initDesktopWindow({
+  SharedPreferences? initialPrefs,
+  bool useDefaultSizeWhenPrefsMissing = false,
+}) async {
   if (kIsWeb) return;
   try {
     if (defaultTargetPlatform == TargetPlatform.windows) {
@@ -115,6 +134,7 @@ Future<void> _initDesktopWindow({SharedPreferences? initialPrefs}) async {
       title: 'Kelivo',
       initialPrefs: initialPrefs,
       centerOnStartup: true,
+      useDefaultSizeWhenPrefsMissing: useDefaultSizeWhenPrefsMissing,
     );
   } catch (_) {
     // Ignore on unsupported platforms.
@@ -186,8 +206,11 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
   if (defaultTargetPlatform == TargetPlatform.windows) {
     unawaited(AppDirectories.ensureWindowsPortableStorageReady());
   }
+  final bootstrapPrefs =
+      _bootstrapPrefs ??
+      await (_bootstrapPrefsFuture ?? Future<SharedPreferences?>.value());
   try {
-    await settings.ensureDeferredLoaded(initialPrefs: _bootstrapPrefs);
+    await settings.ensureDeferredLoaded(initialPrefs: bootstrapPrefs);
   } catch (_) {}
   if (!context.mounted) return;
 

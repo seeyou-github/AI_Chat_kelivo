@@ -44,6 +44,10 @@ class WindowSizeManager {
     return _clamp(Size(width, height));
   }
 
+  Size getDefaultInitialSize() {
+    return _clamp(const Size(defaultWindowWidth, defaultWindowHeight));
+  }
+
   Future<void> setSize(Size size) async {
     final prefs = await SharedPreferences.getInstance();
     final s = _clamp(size);
