@@ -11,6 +11,7 @@ import '../../core/providers/backup_provider.dart';
 import '../../core/providers/s3_backup_provider.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/services/chat/chat_service.dart';
+import '../../core/services/native_file_save.dart';
 import '../../core/services/backup/cherry_importer.dart';
 import '../../core/services/backup/chatbox_importer.dart';
 import '../../utils/platform_utils.dart';
@@ -229,10 +230,37 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
     );
   }
 
+  Future<void> _configureAutoBackupDirectory() async {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+    try {
+      if (Platform.isAndroid) {
+        final uri = await NativeFileSave.pickPersistableDirectory();
+        if (uri == null) return;
+        await settings.setAutoBackupDirectory(uri: uri);
+        return;
+      }
+
+      final path = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: l10n.backupPageAutoBackupChooseDirectory,
+      );
+      if (path == null || path.trim().isEmpty) return;
+      await settings.setAutoBackupDirectory(path: path.trim());
+    } catch (e) {
+      if (!context.mounted) return;
+      showAppSnackBar(
+        context,
+        message: e.toString(),
+        type: NotificationType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final settings = context.watch<SettingsProvider>();
     final webdavVm = context.watch<BackupProvider>();
     final s3Vm = context.watch<S3BackupProvider>();
     final busy = webdavVm.busy || s3Vm.busy;
@@ -777,6 +805,41 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                       ],
                     ),
                     const SizedBox(height: 6),
+                    _ItemRow(
+                      label: l10n.backupPageAutoBackupDirectory,
+                      trailing: Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          Text(
+                            settings.autoBackupConfigured
+                                ? l10n.backupPageAutoBackupDirectorySet
+                                : l10n.backupPageAutoBackupDirectoryNotSet,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: cs.onSurface.withValues(alpha: 0.62),
+                            ),
+                          ),
+                          _DeskIosButton(
+                            label: l10n.backupPageAutoBackupChooseDirectory,
+                            filled: false,
+                            dense: true,
+                            onTap: _configureAutoBackupDirectory,
+                          ),
+                          if (settings.autoBackupConfigured)
+                            _DeskIosButton(
+                              label: l10n.backupPageAutoBackupClearDirectory,
+                              filled: false,
+                              dense: true,
+                              onTap: () => context
+                                  .read<SettingsProvider>()
+                                  .clearAutoBackupDirectory(),
+                            ),
+                        ],
+                      ),
+                    ),
+                    _rowDivider(context),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,

@@ -213,6 +213,60 @@ class _BackupPageState extends State<BackupPage> {
     Future<T> Function() task,
   ) => _runWithLoadingOverlay(context, task);
 
+  Future<void> _configureAutoBackupDirectory(BuildContext context) async {
+    final l10n = AppLocalizations.of(context)!;
+    final settings = context.read<SettingsProvider>();
+    final action = settings.autoBackupConfigured
+        ? await showModalBottomSheet<String>(
+            context: context,
+            builder: (ctx) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    leading: const Icon(Lucide.FolderOpen),
+                    title: Text(l10n.backupPageAutoBackupChooseDirectory),
+                    onTap: () => Navigator.of(ctx).pop('choose'),
+                  ),
+                  ListTile(
+                    leading: const Icon(Lucide.Trash2),
+                    title: Text(l10n.backupPageAutoBackupClearDirectory),
+                    onTap: () => Navigator.of(ctx).pop('clear'),
+                  ),
+                ],
+              ),
+            ),
+          )
+        : 'choose';
+    if (action == null) return;
+    if (action == 'clear') {
+      await settings.clearAutoBackupDirectory();
+      return;
+    }
+
+    try {
+      if (Platform.isAndroid) {
+        final uri = await NativeFileSave.pickPersistableDirectory();
+        if (uri == null) return;
+        await settings.setAutoBackupDirectory(uri: uri);
+        return;
+      }
+
+      final path = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: l10n.backupPageAutoBackupChooseDirectory,
+      );
+      if (path == null || path.trim().isEmpty) return;
+      await settings.setAutoBackupDirectory(path: path.trim());
+    } catch (e) {
+      if (!context.mounted) return;
+      showAppSnackBar(
+        context,
+        message: e.toString(),
+        type: NotificationType.error,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -1179,6 +1233,16 @@ class _BackupPageState extends State<BackupPage> {
                 header(l10n.backupPageLocalBackup),
                 _iosSectionCard(
                   children: [
+                    _iosNavRow(
+                      context,
+                      icon: Lucide.FolderOpen,
+                      label: l10n.backupPageAutoBackupDirectory,
+                      detailText: settings.autoBackupConfigured
+                          ? l10n.backupPageAutoBackupDirectorySet
+                          : l10n.backupPageAutoBackupDirectoryNotSet,
+                      onTap: () => _configureAutoBackupDirectory(context),
+                    ),
+                    _iosDivider(context),
                     _iosNavRow(
                       context,
                       icon: Lucide.Export,

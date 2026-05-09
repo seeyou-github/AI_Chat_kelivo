@@ -23,4 +23,40 @@ class NativeFileSave {
     if (result is bool) return result;
     return result == true;
   }
+
+  static Future<String?> pickPersistableDirectory() async {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError(
+        'Persistable directory access is only supported on Android.',
+      );
+    }
+
+    final result = await _channel.invokeMethod<dynamic>(
+      'pickPersistableDirectory',
+    );
+    return result is String && result.trim().isNotEmpty ? result.trim() : null;
+  }
+
+  static Future<bool> writeFileToPersistableDirectory({
+    required String directoryUri,
+    required String sourcePath,
+    required String fileName,
+  }) async {
+    if (!Platform.isAndroid) {
+      throw UnsupportedError(
+        'Persistable directory access is only supported on Android.',
+      );
+    }
+
+    final result = await _channel.invokeMethod<dynamic>(
+      'writeFileToPersistableDirectory',
+      {
+        'directoryUri': directoryUri,
+        'sourcePath': sourcePath,
+        'fileName': fileName,
+      },
+    );
+    if (result is bool) return result;
+    return result == true;
+  }
 }

@@ -43,6 +43,7 @@ import 'dart:io'
     show Platform; // kept for global override usage inside provider
 import 'core/services/android_background.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/backup/auto_backup_service.dart';
 import 'core/services/storage/windows_portable_storage.dart';
 import 'core/services/storage/windows_portable_path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,6 +59,7 @@ bool _didScheduleDeferredStartupTasks = false;
 bool _didWarmSystemFonts = false;
 bool _didInitDesktopHotkeys = false;
 bool _didInitAndroidBackground = false;
+bool _didInitAutoBackup = false;
 bool? _lastDynamicColorSupported;
 String? _lastTraySyncSignature;
 
@@ -308,6 +310,28 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
   try {
     mcpProvider.scheduleDeferredAutoConnect();
   } catch (_) {}
+
+  if (!_didInitAutoBackup) {
+    _didInitAutoBackup = true;
+    AutoBackupService.instance.configure(
+      settings: settings,
+      chatService: chatService,
+    );
+    AutoBackupService.instance.watch([
+      settings,
+      assistantProvider,
+      context.read<TagProvider>(),
+      userProvider,
+      hotkeyProvider,
+      mcpProvider,
+      context.read<TtsProvider>(),
+      context.read<QuickPhraseProvider>(),
+      context.read<InstructionInjectionProvider>(),
+      context.read<InstructionInjectionGroupProvider>(),
+      context.read<WorldBookProvider>(),
+      context.read<MemoryProvider>(),
+    ]);
+  }
 }
 
 // Removed eager system font preloading to reduce memory footprint at launch.

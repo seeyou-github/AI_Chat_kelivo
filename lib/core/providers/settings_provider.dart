@@ -291,6 +291,10 @@ class SettingsProvider extends ChangeNotifier {
       'search_auto_test_on_launch_v1';
   static const String _webDavConfigKey = 'webdav_config_v1';
   static const String _s3ConfigKey = 's3_config_v1';
+  static const String _autoBackupDirectoryPathKey =
+      'auto_backup_directory_path_v1';
+  static const String _autoBackupDirectoryUriKey =
+      'auto_backup_directory_uri_v1';
   // Global network proxy
   static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
   static const String _globalProxyTypeKey =
@@ -475,6 +479,14 @@ class SettingsProvider extends ChangeNotifier {
   String get globalProxyUsername => _globalProxyUsername;
   String get globalProxyPassword => _globalProxyPassword;
   String get globalProxyBypass => _globalProxyBypass;
+
+  String? _autoBackupDirectoryPath;
+  String? get autoBackupDirectoryPath => _autoBackupDirectoryPath;
+  String? _autoBackupDirectoryUri;
+  String? get autoBackupDirectoryUri => _autoBackupDirectoryUri;
+  bool get autoBackupConfigured => Platform.isAndroid
+      ? (_autoBackupDirectoryUri?.isNotEmpty ?? false)
+      : (_autoBackupDirectoryPath?.isNotEmpty ?? false);
 
   SettingsProvider({SharedPreferences? initialPrefs}) {
     if (initialPrefs != null) {
@@ -739,6 +751,12 @@ class SettingsProvider extends ChangeNotifier {
     _globalProxyBypass =
         prefs.getString(_globalProxyBypassKey) ??
         _defaultGlobalProxyBypassRules;
+    _autoBackupDirectoryPath = _nonEmpty(
+      prefs.getString(_autoBackupDirectoryPathKey),
+    );
+    _autoBackupDirectoryUri = _nonEmpty(
+      prefs.getString(_autoBackupDirectoryUriKey),
+    );
     _appFontFamily = _nonEmpty(prefs.getString(_displayAppFontFamilyKey));
     _codeFontFamily = _nonEmpty(prefs.getString(_displayCodeFontFamilyKey));
     _appFontIsGoogle = prefs.getBool(_displayAppFontIsGoogleKey) ?? false;
@@ -1408,6 +1426,12 @@ class SettingsProvider extends ChangeNotifier {
     } else {
       _globalProxyBypass = bypass;
     }
+    _autoBackupDirectoryPath = _nonEmpty(
+      prefs.getString(_autoBackupDirectoryPathKey),
+    );
+    _autoBackupDirectoryUri = _nonEmpty(
+      prefs.getString(_autoBackupDirectoryUriKey),
+    );
 
     // load network TTS services
     try {
@@ -1923,6 +1947,32 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_s3ConfigKey, jsonEncode(cfg.toJson()));
+  }
+
+  Future<void> setAutoBackupDirectory({
+    String? path,
+    String? uri,
+  }) async {
+    _autoBackupDirectoryPath = _nonEmpty(path);
+    _autoBackupDirectoryUri = _nonEmpty(uri);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final nextPath = _autoBackupDirectoryPath;
+    final nextUri = _autoBackupDirectoryUri;
+    if (nextPath == null) {
+      await prefs.remove(_autoBackupDirectoryPathKey);
+    } else {
+      await prefs.setString(_autoBackupDirectoryPathKey, nextPath);
+    }
+    if (nextUri == null) {
+      await prefs.remove(_autoBackupDirectoryUriKey);
+    } else {
+      await prefs.setString(_autoBackupDirectoryUriKey, nextUri);
+    }
+  }
+
+  Future<void> clearAutoBackupDirectory() {
+    return setAutoBackupDirectory();
   }
 
   Future<void> _initSearchConnectivityTests() async {
