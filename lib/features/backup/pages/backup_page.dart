@@ -1463,6 +1463,9 @@ class _BackupPageState extends State<BackupPage> {
       context,
       () => vm.restoreFromLocalFile(File(path), mode: mode),
     );
+    await context
+        .read<SettingsProvider>()
+        .markAutoBackupPromptAfterLocalRestore();
     if (!context.mounted) return;
     await showDialog(
       context: context,

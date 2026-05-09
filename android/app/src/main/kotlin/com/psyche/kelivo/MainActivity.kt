@@ -45,6 +45,7 @@ class MainActivity : FlutterActivity() {
                 "saveFileFromPath" -> handleSaveFileFromPath(call.arguments, result)
                 "pickPersistableDirectory" -> handlePickPersistableDirectory(result)
                 "writeFileToPersistableDirectory" -> handleWriteFileToPersistableDirectory(call.arguments, result)
+                "releasePersistableDirectoryPermission" -> handleReleasePersistableDirectoryPermission(call.arguments, result)
                 else -> result.notImplemented()
             }
         }
@@ -215,6 +216,25 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }.start()
+    }
+
+    private fun handleReleasePersistableDirectoryPermission(arguments: Any?, result: MethodChannel.Result) {
+        val args = arguments as? Map<*, *>
+        val rawDirectoryUri = args?.get("directoryUri")?.toString()?.trim().orEmpty()
+        if (rawDirectoryUri.isEmpty()) {
+            result.success(false)
+            return
+        }
+
+        try {
+            contentResolver.releasePersistableUriPermission(
+                Uri.parse(rawDirectoryUri),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            )
+            result.success(true)
+        } catch (e: Exception) {
+            result.success(false)
+        }
     }
 
     private fun handleSaveDestination(destUri: Uri?) {

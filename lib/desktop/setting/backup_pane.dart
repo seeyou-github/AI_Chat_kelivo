@@ -889,6 +889,9 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                                 f,
                                 mode: mode,
                               );
+                              await context
+                                  .read<SettingsProvider>()
+                                  .markAutoBackupPromptAfterLocalRestore();
                             });
                           },
                         ),

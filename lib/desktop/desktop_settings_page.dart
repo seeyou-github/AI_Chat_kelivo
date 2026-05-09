@@ -70,10 +70,15 @@ part 'setting/display_pane.dart';
 /// Desktop settings layout: left menu + vertical divider + right content.
 /// For now, only the left menu and the Display Settings content are implemented.
 class DesktopSettingsPage extends StatefulWidget {
-  const DesktopSettingsPage({super.key, this.initialProviderKey});
+  const DesktopSettingsPage({
+    super.key,
+    this.initialProviderKey,
+    this.initialBackup = false,
+  });
 
   // Optional: when provided, jump to Providers tab and preselect this provider
   final String? initialProviderKey;
+  final bool initialBackup;
 
   @override
   State<DesktopSettingsPage> createState() => _DesktopSettingsPageState();
@@ -102,7 +107,9 @@ class _DesktopSettingsPageState extends State<DesktopSettingsPage> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialProviderKey != null) {
+    if (widget.initialBackup) {
+      _selected = _SettingsMenuItem.backup;
+    } else if (widget.initialProviderKey != null) {
       // Deep link into Providers tab when a provider is specified
       _selected = _SettingsMenuItem.providers;
     }

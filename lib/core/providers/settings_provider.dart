@@ -11,6 +11,7 @@ import '../services/search/search_service.dart';
 import '../services/tts/network_tts.dart';
 import '../services/network/request_logger.dart';
 import '../services/logging/flutter_logger.dart';
+import '../services/native_file_save.dart';
 import '../models/api_keys.dart';
 import '../models/backup.dart';
 import '../models/provider_group.dart';
@@ -295,6 +296,10 @@ class SettingsProvider extends ChangeNotifier {
       'auto_backup_directory_path_v1';
   static const String _autoBackupDirectoryUriKey =
       'auto_backup_directory_uri_v1';
+  static const String _autoBackupFirstPromptShownKey =
+      'auto_backup_first_prompt_shown_v1';
+  static const String _autoBackupPromptAfterRestoreKey =
+      'auto_backup_prompt_after_restore_v1';
   // Global network proxy
   static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
   static const String _globalProxyTypeKey =
@@ -1971,8 +1976,43 @@ class SettingsProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> clearAutoBackupDirectory() {
-    return setAutoBackupDirectory();
+  Future<void> clearAutoBackupDirectory() async {
+    final previousUri = _autoBackupDirectoryUri;
+    await setAutoBackupDirectory();
+    if (Platform.isAndroid && previousUri != null && previousUri.isNotEmpty) {
+      try {
+        await NativeFileSave.releasePersistableDirectoryPermission(previousUri);
+      } catch (e, st) {
+        FlutterLogger.log(
+          '[SettingsProvider] release auto backup directory permission failed: $e\n$st',
+          tag: 'AutoBackup',
+        );
+      }
+    }
+  }
+
+  Future<void> markAutoBackupPromptAfterLocalRestore() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoBackupPromptAfterRestoreKey, true);
+  }
+
+  Future<bool> consumeAutoBackupPromptAfterLocalRestore() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shouldPrompt =
+        prefs.getBool(_autoBackupPromptAfterRestoreKey) ?? false;
+    if (shouldPrompt) {
+      await prefs.remove(_autoBackupPromptAfterRestoreKey);
+    }
+    return shouldPrompt;
+  }
+
+  Future<bool> shouldShowInitialAutoBackupPrompt() async {
+    if (autoBackupConfigured) return false;
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool(_autoBackupFirstPromptShownKey) ?? false;
+    if (shown) return false;
+    await prefs.setBool(_autoBackupFirstPromptShownKey, true);
+    return true;
   }
 
   Future<void> _initSearchConnectivityTests() async {

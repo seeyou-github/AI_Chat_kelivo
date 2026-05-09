@@ -59,4 +59,14 @@ class NativeFileSave {
     if (result is bool) return result;
     return result == true;
   }
+
+  static Future<void> releasePersistableDirectoryPermission(
+    String directoryUri,
+  ) async {
+    if (!Platform.isAndroid || directoryUri.trim().isEmpty) return;
+    await _channel.invokeMethod<dynamic>(
+      'releasePersistableDirectoryPermission',
+      {'directoryUri': directoryUri.trim()},
+    );
+  }
 }
