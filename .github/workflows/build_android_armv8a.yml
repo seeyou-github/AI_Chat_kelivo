@@ -80,12 +80,12 @@ jobs:
 
       - name: Build Android arm64-v8a APK
         shell: bash
-        run: flutter build apk --release --target-platform android-arm64
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: Rename APK
         shell: bash
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk \
+          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
             build/app/outputs/flutter-apk/Kelivo_android_${VERSION}_arm64-v8a.apk
 
       - name: Publish GitHub Release
