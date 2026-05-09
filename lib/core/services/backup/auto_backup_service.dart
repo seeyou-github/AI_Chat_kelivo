@@ -21,6 +21,7 @@ class AutoBackupService {
   Timer? _debounce;
   SettingsProvider? _settings;
   DataSync? _dataSync;
+  String? _lastDirectorySignature;
   bool _registered = false;
   bool _running = false;
   bool _rerunRequested = false;
@@ -31,6 +32,7 @@ class AutoBackupService {
   }) {
     _settings = settings;
     _dataSync = DataSync(chatService: chatService);
+    _lastDirectorySignature = _directorySignature(settings);
   }
 
   void watch(Iterable<Listenable> sources) {
@@ -54,11 +56,23 @@ class AutoBackupService {
 
   void _onChanged() {
     final settings = _settings;
-    if (settings == null || !settings.autoBackupConfigured) return;
+    if (settings == null) return;
+    final directorySignature = _directorySignature(settings);
+    if (directorySignature != _lastDirectorySignature) {
+      _lastDirectorySignature = directorySignature;
+      return;
+    }
+    if (!settings.autoBackupConfigured) return;
     _debounce?.cancel();
     _debounce = Timer(const Duration(seconds: 2), () {
       unawaited(runNow(reason: 'settings_changed'));
     });
+  }
+
+  String _directorySignature(SettingsProvider settings) {
+    return Platform.isAndroid
+        ? 'android:${settings.autoBackupDirectoryUri ?? ''}'
+        : 'file:${settings.autoBackupDirectoryPath ?? ''}';
   }
 
   Future<void> runNow({String reason = 'manual'}) async {
