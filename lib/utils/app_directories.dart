@@ -210,6 +210,17 @@ class AppDirectories {
     return Directory('${root.path}/cache');
   }
 
+  /// Gets the directory for local backup files.
+  static Future<Directory> getBackupDirectory() async {
+    if (_isWindowsDesktop) {
+      await ensureWindowsPortableStorageReady();
+      final root = await _getWindowsPortableRootDirectory();
+      return Directory(p.join(root.path, 'backup'));
+    }
+    final root = await getAppDataDirectory();
+    return Directory(p.join(root.path, 'backup'));
+  }
+
   /// Gets the platform-provided application cache directory.
   ///
   /// - Android: /data/user/0/`<package>`/cache

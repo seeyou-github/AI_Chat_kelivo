@@ -15,7 +15,8 @@ class AutoBackupService {
   AutoBackupService._();
 
   static final AutoBackupService instance = AutoBackupService._();
-  static const String fileName = 'AIChat_backup.zip';
+  static const String fileNamePrefix = 'AIChat_backup_';
+  static const String fileExtension = '.zip';
 
   final List<Listenable> _sources = <Listenable>[];
   Timer? _debounce;
@@ -33,6 +34,12 @@ class AutoBackupService {
     _settings = settings;
     _dataSync = DataSync(chatService: chatService);
     _lastDirectorySignature = _directorySignature(settings);
+  }
+
+  static Future<Directory> backupDirectory() async {
+    final dir = await AppDirectories.getBackupDirectory();
+    await dir.create(recursive: true);
+    return dir;
   }
 
   void watch(Iterable<Listenable> sources) {
@@ -70,9 +77,7 @@ class AutoBackupService {
   }
 
   String _directorySignature(SettingsProvider settings) {
-    return Platform.isAndroid
-        ? 'android:${settings.autoBackupDirectoryUri ?? ''}'
-        : 'file:${settings.autoBackupDirectoryPath ?? ''}';
+    return 'fixed:${Platform.resolvedExecutable}';
   }
 
   Future<void> runNow({String reason = 'manual'}) async {
@@ -110,22 +115,64 @@ class AutoBackupService {
       ),
     );
 
-    if (Platform.isAndroid) {
-      final uri = settings.autoBackupDirectoryUri;
-      if (uri == null || uri.isEmpty) return;
-      await NativeFileSave.writeFileToPersistableDirectory(
-        directoryUri: uri,
-        sourcePath: source.path,
-        fileName: fileName,
-      );
-      return;
-    }
+    try {
+      final localName = _localBackupFileName();
+      if (Platform.isAndroid) {
+        final uri = settings.autoBackupDirectoryUri;
+        if (uri != null && uri.isNotEmpty) {
+          await NativeFileSave.writeFileToPersistableDirectory(
+            directoryUri: uri,
+            sourcePath: source.path,
+            fileName: localName,
+          );
+        }
+      } else {
+        final dir = await backupDirectory();
+        final target = File(p.join(dir.path, localName));
+        await source.copy(target.path);
+        await _pruneLocalBackups(dir, settings.autoBackupMaxFiles);
+      }
 
-    final dirPath = settings.autoBackupDirectoryPath;
-    if (dirPath == null || dirPath.isEmpty) return;
-    final dir = Directory(dirPath);
-    await dir.create(recursive: true);
-    final target = File(p.join(dir.path, fileName));
-    await source.copy(target.path);
+      final webdav = settings.webDavConfig;
+      if (webdav.autoBackupToWebDav && webdav.url.trim().isNotEmpty) {
+        await dataSync.uploadBackupFileToWebDav(
+          webdav,
+          source,
+          fileName: p.basename(source.path),
+        );
+        await dataSync.pruneWebDavBackups(webdav);
+      }
+    } finally {
+      try {
+        await source.delete();
+      } catch (_) {}
+    }
+  }
+
+  String _localBackupFileName() {
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    return '$fileNamePrefix$timestamp$fileExtension';
+  }
+
+  Future<void> _pruneLocalBackups(Directory dir, int maxFiles) async {
+    if (maxFiles <= 0 || !await dir.exists()) return;
+    final files = <File>[];
+    await for (final entity in dir.list(followLinks: false)) {
+      if (entity is! File) continue;
+      final name = p.basename(entity.path);
+      if (name.startsWith(fileNamePrefix) && name.endsWith(fileExtension)) {
+        files.add(entity);
+      }
+    }
+    files.sort((a, b) {
+      final aTime = a.statSync().modified;
+      final bTime = b.statSync().modified;
+      return bTime.compareTo(aTime);
+    });
+    for (final file in files.skip(maxFiles)) {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
   }
 }

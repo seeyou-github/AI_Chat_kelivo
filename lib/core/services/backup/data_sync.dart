@@ -241,17 +241,29 @@ class DataSync {
 
   Future<void> backupToWebDav(WebDavConfig cfg) async {
     final file = await prepareBackupFile(cfg);
+    try {
+      await uploadBackupFileToWebDav(cfg, file);
+    } finally {
+      try {
+        await file.delete();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> uploadBackupFileToWebDav(
+    WebDavConfig cfg,
+    File file, {
+    String? fileName,
+  }) async {
     await _ensureCollection(cfg);
-    final target = _fileUri(cfg, p.basename(file.path));
+    final target = _fileUri(cfg, fileName ?? p.basename(file.path));
     final fileLen = await file.length();
-    // Use a streamed request so we don't load the entire file into RAM.
     final req = http.StreamedRequest('PUT', target);
     req.headers.addAll({
       'content-type': 'application/zip',
       'content-length': fileLen.toString(),
       ..._authHeaders(cfg),
     });
-    // Pipe the file stream into the request body.
     file.openRead().listen(
       req.sink.add,
       onDone: req.sink.close,
@@ -403,6 +415,33 @@ class DataSync {
     final res = await http.Client().send(req).then(http.Response.fromStream);
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw Exception('Delete failed: ${res.statusCode}');
+    }
+  }
+
+  Future<void> pruneWebDavBackups(WebDavConfig cfg) async {
+    final max = cfg.maxBackupFiles;
+    if (max <= 0) return;
+    final items = await listBackupFiles(cfg);
+    final backups = items
+        .where(
+          (item) =>
+              item.displayName.startsWith('kelivo_backup_') &&
+              item.displayName.endsWith('.zip'),
+        )
+        .toList();
+    backups.sort((a, b) {
+      final aTime = a.lastModified;
+      final bTime = b.lastModified;
+      if (aTime != null && bTime != null) return bTime.compareTo(aTime);
+      if (aTime == null && bTime == null) {
+        return b.displayName.compareTo(a.displayName);
+      }
+      return aTime == null ? 1 : -1;
+    });
+    for (final item in backups.skip(max)) {
+      try {
+        await deleteWebDavBackupFile(cfg, item);
+      } catch (_) {}
     }
   }
 

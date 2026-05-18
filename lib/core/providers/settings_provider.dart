@@ -300,6 +300,7 @@ class SettingsProvider extends ChangeNotifier {
       'auto_backup_first_prompt_shown_v1';
   static const String _autoBackupPromptAfterRestoreKey =
       'auto_backup_prompt_after_restore_v1';
+  static const String _autoBackupMaxFilesKey = 'auto_backup_max_files_v1';
   // Global network proxy
   static const String _globalProxyEnabledKey = 'global_proxy_enabled_v1';
   static const String _globalProxyTypeKey =
@@ -489,9 +490,9 @@ class SettingsProvider extends ChangeNotifier {
   String? get autoBackupDirectoryPath => _autoBackupDirectoryPath;
   String? _autoBackupDirectoryUri;
   String? get autoBackupDirectoryUri => _autoBackupDirectoryUri;
-  bool get autoBackupConfigured => Platform.isAndroid
-      ? (_autoBackupDirectoryUri?.isNotEmpty ?? false)
-      : (_autoBackupDirectoryPath?.isNotEmpty ?? false);
+  int _autoBackupMaxFiles = 10;
+  int get autoBackupMaxFiles => _autoBackupMaxFiles;
+  bool get autoBackupConfigured => true;
 
   SettingsProvider({SharedPreferences? initialPrefs}) {
     if (initialPrefs != null) {
@@ -761,6 +762,10 @@ class SettingsProvider extends ChangeNotifier {
     );
     _autoBackupDirectoryUri = _nonEmpty(
       prefs.getString(_autoBackupDirectoryUriKey),
+    );
+    _autoBackupMaxFiles = _readPositiveInt(
+      prefs.getInt(_autoBackupMaxFilesKey),
+      fallback: 10,
     );
     _appFontFamily = _nonEmpty(prefs.getString(_displayAppFontFamilyKey));
     _codeFontFamily = _nonEmpty(prefs.getString(_displayCodeFontFamilyKey));
@@ -1437,6 +1442,10 @@ class SettingsProvider extends ChangeNotifier {
     _autoBackupDirectoryUri = _nonEmpty(
       prefs.getString(_autoBackupDirectoryUriKey),
     );
+    _autoBackupMaxFiles = _readPositiveInt(
+      prefs.getInt(_autoBackupMaxFilesKey),
+      fallback: 10,
+    );
 
     // load network TTS services
     try {
@@ -1820,6 +1829,15 @@ class SettingsProvider extends ChangeNotifier {
 
   String? _nonEmpty(String? s) => (s == null || s.isEmpty) ? null : s;
 
+  int _readPositiveInt(Object? value, {required int fallback}) {
+    if (value is int && value > 0) return value;
+    if (value is String) {
+      final parsed = int.tryParse(value);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return fallback;
+  }
+
   Future<String?> _registerLocalFont({
     required String path,
     required String aliasPrefix,
@@ -1989,6 +2007,14 @@ class SettingsProvider extends ChangeNotifier {
         );
       }
     }
+  }
+
+  Future<void> setAutoBackupMaxFiles(int value) async {
+    final next = value <= 0 ? 1 : value;
+    _autoBackupMaxFiles = next;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_autoBackupMaxFilesKey, next);
   }
 
   Future<void> markAutoBackupPromptAfterLocalRestore() async {

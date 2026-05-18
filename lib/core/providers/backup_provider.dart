@@ -49,6 +49,7 @@ class BackupProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _dataSync.backupToWebDav(_cfg);
+      await _dataSync.pruneWebDavBackups(_cfg);
       _message = 'Backup uploaded';
     } catch (e) {
       _message = e.toString();
@@ -86,6 +87,7 @@ class BackupProvider extends ChangeNotifier {
   }
 
   Future<File> exportToFile() => _dataSync.exportToFile(_cfg);
+  Future<void> pruneRemote() => _dataSync.pruneWebDavBackups(_cfg);
   Future<void> restoreFromLocalFile(
     File file, {
     RestoreMode mode = RestoreMode.overwrite,

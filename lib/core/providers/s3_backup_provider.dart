@@ -89,10 +89,16 @@ class S3BackupProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final file = await _dataSync.prepareBackupFile(_scopeAsWebdavConfig());
-      final prefix = _normalizePrefix(_cfg.prefix);
-      final key = '$prefix${p.basename(file.path)}';
-      // Use file-stream upload to avoid loading entire ZIP into memory.
-      await _client.uploadFile(_cfg, key: key, file: file);
+      try {
+        final prefix = _normalizePrefix(_cfg.prefix);
+        final key = '$prefix${p.basename(file.path)}';
+        // Use file-stream upload to avoid loading entire ZIP into memory.
+        await _client.uploadFile(_cfg, key: key, file: file);
+      } finally {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
       _message = 'Backup uploaded';
     } catch (e) {
       _message = e.toString();

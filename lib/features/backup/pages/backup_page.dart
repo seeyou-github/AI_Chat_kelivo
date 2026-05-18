@@ -19,6 +19,7 @@ import '../../../core/services/native_file_save.dart';
 import '../../../shared/widgets/ios_switch.dart';
 import '../../../core/services/backup/cherry_importer.dart';
 import '../../../core/services/backup/chatbox_importer.dart';
+import '../../../core/services/backup/auto_backup_service.dart';
 import '../../../utils/platform_utils.dart';
 
 // File size formatter (B, KB, MB, GB)
@@ -42,6 +43,22 @@ class BackupPage extends StatefulWidget {
 class _BackupPageState extends State<BackupPage> {
   List<BackupFileItem> _remote = const <BackupFileItem>[];
   List<BackupFileItem> _remoteS3 = const <BackupFileItem>[];
+  String? _autoBackupPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAutoBackupPath();
+  }
+
+  Future<void> _loadAutoBackupPath() async {
+    if (Platform.isAndroid) return;
+    try {
+      final dir = await AutoBackupService.backupDirectory();
+      if (!mounted) return;
+      setState(() => _autoBackupPath = dir.path);
+    } catch (_) {}
+  }
 
   Future<bool?> _confirmCherryImport(BuildContext context) async {
     final l10n = AppLocalizations.of(context)!;
@@ -214,57 +231,7 @@ class _BackupPageState extends State<BackupPage> {
   ) => _runWithLoadingOverlay(context, task);
 
   Future<void> _configureAutoBackupDirectory(BuildContext context) async {
-    final l10n = AppLocalizations.of(context)!;
-    final settings = context.read<SettingsProvider>();
-    final action = settings.autoBackupConfigured
-        ? await showModalBottomSheet<String>(
-            context: context,
-            builder: (ctx) => SafeArea(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    leading: const Icon(Lucide.FolderOpen),
-                    title: Text(l10n.backupPageAutoBackupChooseDirectory),
-                    onTap: () => Navigator.of(ctx).pop('choose'),
-                  ),
-                  ListTile(
-                    leading: const Icon(Lucide.Trash2),
-                    title: Text(l10n.backupPageAutoBackupClearDirectory),
-                    onTap: () => Navigator.of(ctx).pop('clear'),
-                  ),
-                ],
-              ),
-            ),
-          )
-        : 'choose';
-    if (action == null) return;
-    if (action == 'clear') {
-      await settings.clearAutoBackupDirectory();
-      return;
-    }
-
-    try {
-      if (Platform.isAndroid) {
-        final uri = await NativeFileSave.pickPersistableDirectory();
-        if (uri == null) return;
-        await settings.setAutoBackupDirectory(uri: uri);
-        return;
-      }
-
-      final path = await FilePicker.platform.getDirectoryPath(
-        dialogTitle: l10n.backupPageAutoBackupChooseDirectory,
-      );
-      if (path == null || path.trim().isEmpty) return;
-      await settings.setAutoBackupDirectory(path: path.trim());
-    } catch (e) {
-      if (!context.mounted) return;
-      showAppSnackBar(
-        context,
-        message: e.toString(),
-        type: NotificationType.error,
-      );
-    }
+    await _loadAutoBackupPath();
   }
 
   @override
@@ -373,6 +340,18 @@ class _BackupPageState extends State<BackupPage> {
                       label: l10n.backupPageWebDavServerSettings,
                       onTap: () =>
                           _showWebDavSettingsSheet(context, settings, vm, cfg),
+                    ),
+                    _iosDivider(context),
+                    _iosSwitchRow(
+                      context,
+                      icon: Lucide.Upload,
+                      label: '自动备份时同步到 WebDAV',
+                      value: cfg.autoBackupToWebDav,
+                      onChanged: (v) async {
+                        final newCfg = cfg.copyWith(autoBackupToWebDav: v);
+                        await settings.setWebDavConfig(newCfg);
+                        vm.updateConfig(newCfg);
+                      },
                     ),
                     _iosDivider(context),
                     _iosNavRow(
@@ -1237,10 +1216,22 @@ class _BackupPageState extends State<BackupPage> {
                       context,
                       icon: Lucide.FolderOpen,
                       label: l10n.backupPageAutoBackupDirectory,
-                      detailText: settings.autoBackupConfigured
-                          ? l10n.backupPageAutoBackupDirectorySet
-                          : l10n.backupPageAutoBackupDirectoryNotSet,
+                      detailText:
+                          _autoBackupPath ?? 'AppData/backup',
                       onTap: () => _configureAutoBackupDirectory(context),
+                    ),
+                    _iosDivider(context),
+                    _iosNavRow(
+                      context,
+                      icon: Lucide.ListTree,
+                      label: '最大本地备份数量',
+                      detailText: settings.autoBackupMaxFiles.toString(),
+                      onTap: () => _showPositiveIntDialog(
+                        context,
+                        title: '最大本地备份数量',
+                        initialValue: settings.autoBackupMaxFiles,
+                        onSave: settings.setAutoBackupMaxFiles,
+                      ),
                     ),
                     _iosDivider(context),
                     _iosNavRow(
@@ -1443,6 +1434,9 @@ class _BackupPageState extends State<BackupPage> {
         } catch (_) {}
       }
     }
+    try {
+      await file.delete();
+    } catch (_) {}
   }
 
   Future<void> _doImportLocal(BuildContext context, BackupProvider vm) async {
@@ -1483,6 +1477,44 @@ class _BackupPageState extends State<BackupPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _showPositiveIntDialog(
+    BuildContext context, {
+    required String title,
+    required int initialValue,
+    required Future<void> Function(int value) onSave,
+  }) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: initialValue.toString());
+    final value = await showDialog<int>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(hintText: title),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(l10n.backupPageCancel),
+          ),
+          TextButton(
+            onPressed: () {
+              final parsed = int.tryParse(controller.text.trim());
+              Navigator.of(dialogCtx).pop(parsed);
+            },
+            child: Text(l10n.backupPageSave),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null || value <= 0) return;
+    await onSave(value);
   }
 
   Future<void> _showWebDavSettingsSheet(
@@ -2246,6 +2278,7 @@ class _WebDavSettingsSheetState extends State<_WebDavSettingsSheet> {
   late final TextEditingController _userCtrl;
   late final TextEditingController _passCtrl;
   late final TextEditingController _pathCtrl;
+  late final TextEditingController _maxFilesCtrl;
   bool _showPassword = false;
 
   @override
@@ -2257,6 +2290,9 @@ class _WebDavSettingsSheetState extends State<_WebDavSettingsSheet> {
     _pathCtrl = TextEditingController(
       text: widget.cfg.path.isEmpty ? 'kelivo_backups' : widget.cfg.path,
     );
+    _maxFilesCtrl = TextEditingController(
+      text: widget.cfg.maxBackupFiles.toString(),
+    );
   }
 
   @override
@@ -2265,6 +2301,7 @@ class _WebDavSettingsSheetState extends State<_WebDavSettingsSheet> {
     _userCtrl.dispose();
     _passCtrl.dispose();
     _pathCtrl.dispose();
+    _maxFilesCtrl.dispose();
     super.dispose();
   }
 
@@ -2330,6 +2367,9 @@ class _WebDavSettingsSheetState extends State<_WebDavSettingsSheet> {
                         path: _pathCtrl.text.trim().isEmpty
                             ? 'kelivo_backups'
                             : _pathCtrl.text.trim(),
+                        maxBackupFiles:
+                            int.tryParse(_maxFilesCtrl.text.trim()) ??
+                            widget.cfg.maxBackupFiles,
                       );
                       await widget.settings.setWebDavConfig(newCfg);
                       widget.vm.updateConfig(newCfg);
@@ -2366,6 +2406,12 @@ class _WebDavSettingsSheetState extends State<_WebDavSettingsSheet> {
                 label: l10n.backupPagePath,
                 controller: _pathCtrl,
                 hint: 'kelivo_backups',
+              ),
+              const SizedBox(height: 12),
+              _InputRow(
+                label: '最大 WebDAV 备份数量',
+                controller: _maxFilesCtrl,
+                hint: '10',
               ),
               const SizedBox(height: 16),
             ],

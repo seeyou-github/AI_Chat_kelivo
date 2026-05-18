@@ -4,9 +4,7 @@ import 'package:flutter/foundation.dart'
 import 'dart:async';
 import 'l10n/app_localizations.dart';
 import 'features/home/pages/home_page.dart';
-import 'features/backup/pages/backup_page.dart';
 import 'desktop/desktop_home_page.dart';
-import 'desktop/desktop_settings_page.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 import 'desktop/desktop_window_controller.dart';
@@ -63,7 +61,6 @@ bool _didWarmSystemFonts = false;
 bool _didInitDesktopHotkeys = false;
 bool _didInitAndroidBackground = false;
 bool _didInitAutoBackup = false;
-bool _didCheckAutoBackupPrompt = false;
 bool? _lastDynamicColorSupported;
 String? _lastTraySyncSignature;
 
@@ -337,73 +334,6 @@ Future<void> _runDeferredStartupTasks(BuildContext context) async {
     ]);
   }
 
-  if (!_didCheckAutoBackupPrompt) {
-    _didCheckAutoBackupPrompt = true;
-    var shouldPrompt = false;
-    var afterLocalRestore = false;
-    try {
-      afterLocalRestore =
-          await settings.consumeAutoBackupPromptAfterLocalRestore();
-      if (afterLocalRestore) {
-        await settings.clearAutoBackupDirectory();
-        shouldPrompt = true;
-      } else {
-        shouldPrompt = await settings.shouldShowInitialAutoBackupPrompt();
-      }
-    } catch (_) {}
-
-    if (shouldPrompt) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(
-          _showAutoBackupDirectoryPrompt(afterLocalRestore: afterLocalRestore),
-        );
-      });
-    }
-  }
-}
-
-Future<void> _showAutoBackupDirectoryPrompt({
-  required bool afterLocalRestore,
-}) async {
-  final nav = appNavigatorKey.currentState;
-  final ctx = appNavigatorKey.currentContext;
-  if (nav == null || ctx == null) return;
-  final l10n = AppLocalizations.of(ctx);
-  if (l10n == null) return;
-
-  final open = await showDialog<bool>(
-    context: ctx,
-    builder: (dialogCtx) => AlertDialog(
-      title: Text(l10n.backupPageAutoBackupPromptTitle),
-      content: Text(
-        afterLocalRestore
-            ? l10n.backupPageAutoBackupPromptAfterRestoreContent
-            : l10n.backupPageAutoBackupPromptFirstLaunchContent,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(dialogCtx).pop(false),
-          child: Text(l10n.backupPageCancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(dialogCtx).pop(true),
-          child: Text(l10n.backupPageOK),
-        ),
-      ],
-    ),
-  );
-  if (open != true) return;
-
-  if (_isDesktopPlatform()) {
-    await nav.push(
-      MaterialPageRoute(
-        builder: (_) => const DesktopSettingsPage(initialBackup: true),
-      ),
-    );
-    return;
-  }
-
-  await nav.push(MaterialPageRoute(builder: (_) => const BackupPage()));
 }
 
 // Removed eager system font preloading to reduce memory footprint at launch.

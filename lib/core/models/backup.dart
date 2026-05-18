@@ -12,6 +12,8 @@ class WebDavConfig {
   final String path;
   final bool includeChats; // Hive boxes
   final bool includeFiles; // uploads/
+  final bool autoBackupToWebDav;
+  final int maxBackupFiles;
 
   const WebDavConfig({
     this.url = '',
@@ -20,6 +22,8 @@ class WebDavConfig {
     this.path = 'kelivo_backups',
     this.includeChats = true,
     this.includeFiles = true,
+    this.autoBackupToWebDav = false,
+    this.maxBackupFiles = 10,
   });
 
   WebDavConfig copyWith({
@@ -29,6 +33,8 @@ class WebDavConfig {
     String? path,
     bool? includeChats,
     bool? includeFiles,
+    bool? autoBackupToWebDav,
+    int? maxBackupFiles,
   }) {
     return WebDavConfig(
       url: url ?? this.url,
@@ -37,6 +43,8 @@ class WebDavConfig {
       path: path ?? this.path,
       includeChats: includeChats ?? this.includeChats,
       includeFiles: includeFiles ?? this.includeFiles,
+      autoBackupToWebDav: autoBackupToWebDav ?? this.autoBackupToWebDav,
+      maxBackupFiles: maxBackupFiles ?? this.maxBackupFiles,
     );
   }
 
@@ -47,6 +55,8 @@ class WebDavConfig {
     'path': path,
     'includeChats': includeChats,
     'includeFiles': includeFiles,
+    'autoBackupToWebDav': autoBackupToWebDav,
+    'maxBackupFiles': maxBackupFiles,
   };
 
   static WebDavConfig fromJson(Map<String, dynamic> json) {
@@ -59,7 +69,18 @@ class WebDavConfig {
           : 'kelivo_backups',
       includeChats: json['includeChats'] as bool? ?? true,
       includeFiles: json['includeFiles'] as bool? ?? true,
+      autoBackupToWebDav: json['autoBackupToWebDav'] as bool? ?? false,
+      maxBackupFiles: _positiveInt(json['maxBackupFiles'], fallback: 10),
     );
+  }
+
+  static int _positiveInt(dynamic value, {required int fallback}) {
+    if (value is int && value > 0) return value;
+    if (value is String) {
+      final parsed = int.tryParse(value);
+      if (parsed != null && parsed > 0) return parsed;
+    }
+    return fallback;
   }
 
   static WebDavConfig fromJsonString(String s) {

@@ -14,6 +14,7 @@ import '../../core/services/chat/chat_service.dart';
 import '../../core/services/native_file_save.dart';
 import '../../core/services/backup/cherry_importer.dart';
 import '../../core/services/backup/chatbox_importer.dart';
+import '../../core/services/backup/auto_backup_service.dart';
 import '../../utils/platform_utils.dart';
 import '../../shared/widgets/ios_switch.dart';
 import '../../shared/widgets/snackbar.dart';
@@ -30,6 +31,8 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
   late TextEditingController _username;
   late TextEditingController _password;
   late TextEditingController _path;
+  late TextEditingController _webDavMaxFiles;
+  late TextEditingController _localMaxFiles;
   late TextEditingController _s3Endpoint;
   late TextEditingController _s3Region;
   late TextEditingController _s3Bucket;
@@ -39,7 +42,9 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
   late TextEditingController _s3Prefix;
   bool _includeChats = true;
   bool _includeFiles = true;
+  bool _autoBackupToWebDav = false;
   bool _s3PathStyle = true;
+  String? _autoBackupPath;
 
   @override
   void initState() {
@@ -50,8 +55,15 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
     _username = TextEditingController(text: cfg.username);
     _password = TextEditingController(text: cfg.password);
     _path = TextEditingController(text: cfg.path);
+    _webDavMaxFiles = TextEditingController(
+      text: cfg.maxBackupFiles.toString(),
+    );
+    _localMaxFiles = TextEditingController(
+      text: settings.autoBackupMaxFiles.toString(),
+    );
     _includeChats = cfg.includeChats;
     _includeFiles = cfg.includeFiles;
+    _autoBackupToWebDav = cfg.autoBackupToWebDav;
 
     final s3 = settings.s3Config;
     _s3Endpoint = TextEditingController(text: s3.endpoint);
@@ -62,6 +74,7 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
     _s3SessionToken = TextEditingController(text: s3.sessionToken);
     _s3Prefix = TextEditingController(text: s3.prefix);
     _s3PathStyle = s3.pathStyle;
+    _loadAutoBackupPath();
   }
 
   @override
@@ -70,6 +83,8 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
     _username.dispose();
     _password.dispose();
     _path.dispose();
+    _webDavMaxFiles.dispose();
+    _localMaxFiles.dispose();
     _s3Endpoint.dispose();
     _s3Region.dispose();
     _s3Bucket.dispose();
@@ -88,6 +103,8 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
       path: _path.text.trim().isEmpty ? 'kelivo_backups' : _path.text.trim(),
       includeChats: _includeChats,
       includeFiles: _includeFiles,
+      autoBackupToWebDav: _autoBackupToWebDav,
+      maxBackupFiles: int.tryParse(_webDavMaxFiles.text.trim()) ?? 10,
     );
   }
 
@@ -106,6 +123,8 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
     String? path,
     bool? includeChats,
     bool? includeFiles,
+    bool? autoBackupToWebDav,
+    int? maxBackupFiles,
   }) async {
     final settings = context.read<SettingsProvider>();
     final backupProvider = context.read<BackupProvider>();
@@ -118,9 +137,21 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
           (_path.text.trim().isEmpty ? 'kelivo_backups' : _path.text.trim()),
       includeChats: includeChats ?? _includeChats,
       includeFiles: includeFiles ?? _includeFiles,
+      autoBackupToWebDav: autoBackupToWebDav ?? _autoBackupToWebDav,
+      maxBackupFiles:
+          maxBackupFiles ?? int.tryParse(_webDavMaxFiles.text.trim()) ?? 10,
     );
     await settings.setWebDavConfig(cfg);
     backupProvider.updateConfig(cfg);
+  }
+
+  Future<void> _loadAutoBackupPath() async {
+    if (Platform.isAndroid) return;
+    try {
+      final dir = await AutoBackupService.backupDirectory();
+      if (!mounted) return;
+      setState(() => _autoBackupPath = dir.path);
+    } catch (_) {}
   }
 
   S3Config _buildS3ConfigFromForm() {
@@ -231,29 +262,7 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
   }
 
   Future<void> _configureAutoBackupDirectory() async {
-    final l10n = AppLocalizations.of(context)!;
-    final settings = context.read<SettingsProvider>();
-    try {
-      if (Platform.isAndroid) {
-        final uri = await NativeFileSave.pickPersistableDirectory();
-        if (uri == null) return;
-        await settings.setAutoBackupDirectory(uri: uri);
-        return;
-      }
-
-      final path = await FilePicker.platform.getDirectoryPath(
-        dialogTitle: l10n.backupPageAutoBackupChooseDirectory,
-      );
-      if (path == null || path.trim().isEmpty) return;
-      await settings.setAutoBackupDirectory(path: path.trim());
-    } catch (e) {
-      if (!context.mounted) return;
-      showAppSnackBar(
-        context,
-        message: e.toString(),
-        type: NotificationType.error,
-      );
-    }
+    await _loadAutoBackupPath();
   }
 
   @override
@@ -448,6 +457,39 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                           ).copyWith(hintText: 'kelivo_backups'),
                           onChanged: (v) => _applyPartial(path: v),
                         ),
+                      ),
+                    ),
+                    _rowDivider(context),
+                    _ItemRow(
+                      label: '最大 WebDAV 备份数量',
+                      trailing: SizedBox(
+                        width: 420,
+                        child: TextField(
+                          controller: _webDavMaxFiles,
+                          enabled: !busy,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: _deskInputDecoration(
+                            context,
+                          ).copyWith(hintText: '10'),
+                          onChanged: (v) => _applyPartial(
+                            maxBackupFiles: int.tryParse(v.trim()),
+                          ),
+                        ),
+                      ),
+                    ),
+                    _rowDivider(context),
+                    _ItemRow(
+                      label: '自动备份时同步到 WebDAV',
+                      vpad: 2,
+                      trailing: IosSwitch(
+                        value: _autoBackupToWebDav,
+                        onChanged: busy
+                            ? null
+                            : (v) async {
+                                setState(() => _autoBackupToWebDav = v);
+                                await _applyPartial(autoBackupToWebDav: v);
+                              },
                       ),
                     ),
                     _rowDivider(context),
@@ -807,36 +849,43 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                     const SizedBox(height: 6),
                     _ItemRow(
                       label: l10n.backupPageAutoBackupDirectory,
-                      trailing: Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            settings.autoBackupConfigured
-                                ? l10n.backupPageAutoBackupDirectorySet
-                                : l10n.backupPageAutoBackupDirectoryNotSet,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: cs.onSurface.withValues(alpha: 0.62),
-                            ),
+                      trailing: SizedBox(
+                        width: 420,
+                        child: Text(
+                          _autoBackupPath ??
+                              'AppData/backup',
+                          textAlign: TextAlign.right,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: cs.onSurface.withValues(alpha: 0.62),
                           ),
-                          _DeskIosButton(
-                            label: l10n.backupPageAutoBackupChooseDirectory,
-                            filled: false,
-                            dense: true,
-                            onTap: _configureAutoBackupDirectory,
-                          ),
-                          if (settings.autoBackupConfigured)
-                            _DeskIosButton(
-                              label: l10n.backupPageAutoBackupClearDirectory,
-                              filled: false,
-                              dense: true,
-                              onTap: () => context
+                        ),
+                      ),
+                    ),
+                    _rowDivider(context),
+                    _ItemRow(
+                      label: '最大本地备份数量',
+                      trailing: SizedBox(
+                        width: 420,
+                        child: TextField(
+                          controller: _localMaxFiles,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(fontSize: 14),
+                          textAlign: TextAlign.right,
+                          decoration: _deskInputDecoration(
+                            context,
+                          ).copyWith(hintText: '10'),
+                          onChanged: (v) {
+                            final parsed = int.tryParse(v.trim());
+                            if (parsed != null && parsed > 0) {
+                              context
                                   .read<SettingsProvider>()
-                                  .clearAutoBackupDirectory(),
-                            ),
-                        ],
+                                  .setAutoBackupMaxFiles(parsed);
+                            }
+                          },
+                        ),
                       ),
                     ),
                     _rowDivider(context),
@@ -868,6 +917,9 @@ class _DesktopBackupPaneState extends State<DesktopBackupPane> {
                                 await file.copy(savePath);
                               } catch (_) {}
                             }
+                            try {
+                              await file.delete();
+                            } catch (_) {}
                           },
                         ),
                         _DeskIosButton(
