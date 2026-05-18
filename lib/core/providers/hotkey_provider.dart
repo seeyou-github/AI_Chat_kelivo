@@ -91,6 +91,13 @@ class HotkeyProvider extends ChangeNotifier {
       defaultMac: 'cmd+bracketright',
       enabledByDefault: true,
     ),
+    'ocr_screenshot': AppHotkey(
+      id: 'ocr_screenshot',
+      l10nLabelKey: 'hotkeyOcrScreenshot',
+      defaultWinLinux: '',
+      defaultMac: '',
+      enabledByDefault: true,
+    ),
   };
 
   final Map<String, HotKey> _registered = <String, HotKey>{};
@@ -212,7 +219,8 @@ class HotkeyProvider extends ChangeNotifier {
       if (!e.enabled) continue;
       final cmd = e.command;
       if (cmd == null || cmd.trim().isEmpty) continue;
-      final scope = (e.id == 'toggle_app_visibility')
+      final scope = (e.id == 'toggle_app_visibility' ||
+              e.id == 'ocr_screenshot')
           ? HotKeyScope.system
           : HotKeyScope.inapp;
       final hk = _parseCommandToHotKey(cmd, scope: scope);
@@ -252,6 +260,9 @@ class HotkeyProvider extends ChangeNotifier {
         break;
       case 'toggle_topics':
         HotkeyEventBus.instance.fire(HotkeyAction.toggleLeftPanelTopics);
+        break;
+      case 'ocr_screenshot':
+        HotkeyEventBus.instance.fire(HotkeyAction.ocrScreenshot);
         break;
     }
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -11,6 +12,7 @@ import '../features/home/services/ocr_service.dart';
 import '../features/model/widgets/model_select_sheet.dart' show showModelSelector;
 import '../icons/lucide_adapter.dart' as lucide;
 import '../utils/app_directories.dart';
+import 'hotkeys/ocr_action_bus.dart';
 
 class DesktopOcrPage extends StatefulWidget {
   const DesktopOcrPage({super.key});
@@ -24,10 +26,25 @@ class _DesktopOcrPageState extends State<DesktopOcrPage> {
   final OcrService _ocrService = OcrService();
   final List<_OcrEntry> _entries = <_OcrEntry>[];
   final List<String> _imagePaths = <String>[];
+  StreamSubscription<OcrAction>? _ocrActionSub;
   bool _busy = false;
 
   @override
+  void initState() {
+    super.initState();
+    _ocrActionSub = OcrActionBus.instance.stream.listen((action) {
+      if (!mounted) return;
+      switch (action) {
+        case OcrAction.captureAndSend:
+          _captureScreenshot();
+          break;
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _ocrActionSub?.cancel();
     _inputController.dispose();
     super.dispose();
   }
@@ -242,6 +259,7 @@ class _DesktopOcrPageState extends State<DesktopOcrPage> {
   }
 
   Future<void> _captureScreenshot() async {
+    if (_busy) return;
     if (!Platform.isWindows) {
       _showMessage('当前平台暂不支持自动截图，请使用上传文件。');
       await _pickImages();

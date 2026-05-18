@@ -13,6 +13,7 @@ import 'package:window_manager/window_manager.dart';
 import 'dart:async';
 import 'hotkeys/hotkey_event_bus.dart';
 import 'hotkeys/chat_action_bus.dart';
+import 'hotkeys/ocr_action_bus.dart';
 
 /// Desktop home screen: left compact rail + main content.
 /// Phase 1 focuses on structure and platform-appropriate interactions/hover.
@@ -120,6 +121,19 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         case HotkeyAction.toggleLeftPanelTopics:
           if (_tabIndex == 0) {
             ChatActionBus.instance.fire(ChatAction.toggleLeftPanelTopics);
+          }
+          break;
+        case HotkeyAction.ocrScreenshot:
+          if (mounted) {
+            setState(() {
+              _tabIndex = 4;
+              _ocrVisited = true;
+              _globalSearchActive = false;
+            });
+            ChatActionBus.instance.fire(ChatAction.exitGlobalSearch);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              OcrActionBus.instance.fire(OcrAction.captureAndSend);
+            });
           }
           break;
       }

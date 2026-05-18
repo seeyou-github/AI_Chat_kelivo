@@ -148,6 +148,8 @@ class _HotkeyRowState extends State<_HotkeyRow> {
           return loc.hotkeyToggleAssistantPanel;
         case 'hotkeyToggleTopicPanel':
           return loc.hotkeyToggleTopicPanel;
+        case 'hotkeyOcrScreenshot':
+          return 'OCR截图全局快捷键';
         default:
           return item.l10nLabelKey;
       }
