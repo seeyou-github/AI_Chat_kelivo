@@ -1199,6 +1199,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                 tooltip: l10n.chatInputBarOcrTooltip,
                 icon: Lucide.Eye,
                 active: widget.ocrActive,
+                strongActive: true,
                 onTap: lockTap(widget.onToggleOcr),
               ),
               menu: DesktopContextMenuItem(
@@ -1963,6 +1964,7 @@ class _CompactIconButton extends StatelessWidget {
     this.child,
     this.childBuilder,
     this.modelIcon = false,
+    this.strongActive = false,
   });
 
   final IconData icon;
@@ -1973,6 +1975,7 @@ class _CompactIconButton extends StatelessWidget {
   final Widget? child;
   final Widget Function(Color color)? childBuilder;
   final bool modelIcon;
+  final bool strongActive;
 
   @override
   Widget build(BuildContext context) {
@@ -1995,7 +1998,7 @@ class _CompactIconButton extends StatelessWidget {
         ? 1.0
         : 6.0; // keep total ~30px (2*1 + 28)
 
-    final button = IosIconButton(
+    Widget button = IosIconButton(
       size: isModelChild ? childSize : 20,
       padding: EdgeInsets.all(padding),
       onTap: onTap,
@@ -2017,6 +2020,37 @@ class _CompactIconButton extends StatelessWidget {
                 : null),
       icon: child == null && childBuilder == null ? icon : null,
     );
+
+    if (strongActive && active) {
+      button = DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: theme.colorScheme.primary.withValues(alpha: 0.55),
+            width: 1,
+          ),
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            button,
+            Positioned(
+              right: 3,
+              top: 3,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     if (tooltip == null) {
       return button;
