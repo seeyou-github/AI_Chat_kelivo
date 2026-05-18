@@ -295,7 +295,7 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
       onLinkTap: (url, title) => _handleLinkTap(context, url),
       components: components,
       inlineComponents: inlineComponents,
-      imageBuilder: (ctx, url) {
+      imageBuilder: (ctx, url, width, height) {
         final imgs = imageUrls.isNotEmpty ? imageUrls : <String>[url];
         final idx = imgs.indexOf(url);
         final initial = idx >= 0 ? idx : 0;
@@ -339,7 +339,8 @@ class MarkdownWithCodeHighlight extends StatelessWidget {
                   }
                   return Image(
                     image: provider,
-                    width: constraints.maxWidth,
+                    width: width ?? constraints.maxWidth,
+                    height: height,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stack) =>
                         const Icon(Icons.broken_image),

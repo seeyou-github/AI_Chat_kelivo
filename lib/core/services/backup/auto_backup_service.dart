@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 
+import '../../../utils/app_directories.dart';
 import '../../models/backup.dart';
 import '../../providers/settings_provider.dart';
 import '../chat/chat_service.dart';
