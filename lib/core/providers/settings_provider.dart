@@ -320,6 +320,14 @@ class SettingsProvider extends ChangeNotifier {
   static const String _desktopSidebarOpenKey = 'desktop_sidebar_open_v1';
   static const String _desktopRightSidebarWidthKey =
       'desktop_right_sidebar_width_v1';
+  static const String _desktopNavShowChatKey = 'desktop_nav_show_chat_v1';
+  static const String _desktopNavShowSearchKey = 'desktop_nav_show_search_v1';
+  static const String _desktopNavShowOcrKey = 'desktop_nav_show_ocr_v1';
+  static const String _desktopNavShowTranslateKey =
+      'desktop_nav_show_translate_v1';
+  static const String _desktopNavShowStorageKey =
+      'desktop_nav_show_storage_v1';
+  static const String _desktopNavShowThemeKey = 'desktop_nav_show_theme_v1';
 
   // ===== Network TTS services =====
   List<TtsServiceOptions> _ttsServices = const <TtsServiceOptions>[];
@@ -392,6 +400,18 @@ class SettingsProvider extends ChangeNotifier {
   bool get desktopSidebarOpen => _desktopSidebarOpen;
   double _desktopRightSidebarWidth = 300;
   double get desktopRightSidebarWidth => _desktopRightSidebarWidth;
+  bool _desktopNavShowChat = true;
+  bool get desktopNavShowChat => _desktopNavShowChat;
+  bool _desktopNavShowSearch = true;
+  bool get desktopNavShowSearch => _desktopNavShowSearch;
+  bool _desktopNavShowOcr = true;
+  bool get desktopNavShowOcr => _desktopNavShowOcr;
+  bool _desktopNavShowTranslate = true;
+  bool get desktopNavShowTranslate => _desktopNavShowTranslate;
+  bool _desktopNavShowStorage = true;
+  bool get desktopNavShowStorage => _desktopNavShowStorage;
+  bool _desktopNavShowTheme = true;
+  bool get desktopNavShowTheme => _desktopNavShowTheme;
 
   // Desktop: topic list position (left or right) and right sidebar open state
   DesktopTopicPosition _desktopTopicPosition = DesktopTopicPosition.left;
@@ -744,6 +764,13 @@ class SettingsProvider extends ChangeNotifier {
     _desktopSidebarOpen = prefs.getBool(_desktopSidebarOpenKey) ?? true;
     _desktopRightSidebarWidth =
         prefs.getDouble(_desktopRightSidebarWidthKey) ?? 300;
+    _desktopNavShowChat = prefs.getBool(_desktopNavShowChatKey) ?? true;
+    _desktopNavShowSearch = prefs.getBool(_desktopNavShowSearchKey) ?? true;
+    _desktopNavShowOcr = prefs.getBool(_desktopNavShowOcrKey) ?? true;
+    _desktopNavShowTranslate =
+        prefs.getBool(_desktopNavShowTranslateKey) ?? true;
+    _desktopNavShowStorage = prefs.getBool(_desktopNavShowStorageKey) ?? true;
+    _desktopNavShowTheme = prefs.getBool(_desktopNavShowThemeKey) ?? true;
     _appLocaleTag = prefs.getString(_appLocaleKey);
     if (_appLocaleTag == null || _appLocaleTag!.isEmpty) {
       _appLocaleTag = 'system';
@@ -1366,6 +1393,13 @@ class SettingsProvider extends ChangeNotifier {
     _desktopSidebarOpen = prefs.getBool(_desktopSidebarOpenKey) ?? true;
     _desktopRightSidebarWidth =
         prefs.getDouble(_desktopRightSidebarWidthKey) ?? 300;
+    _desktopNavShowChat = prefs.getBool(_desktopNavShowChatKey) ?? true;
+    _desktopNavShowSearch = prefs.getBool(_desktopNavShowSearchKey) ?? true;
+    _desktopNavShowOcr = prefs.getBool(_desktopNavShowOcrKey) ?? true;
+    _desktopNavShowTranslate =
+        prefs.getBool(_desktopNavShowTranslateKey) ?? true;
+    _desktopNavShowStorage = prefs.getBool(_desktopNavShowStorageKey) ?? true;
+    _desktopNavShowTheme = prefs.getBool(_desktopNavShowThemeKey) ?? true;
     // Load app locale; default to follow system on first launch
     _appLocaleTag = prefs.getString(_appLocaleKey);
     if (_appLocaleTag == null || _appLocaleTag!.isEmpty) {
@@ -3458,6 +3492,54 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     await prefs.setString(_desktopSendShortcutKey, str);
   }
 
+  Future<void> setDesktopNavShowChat(bool v) async {
+    if (_desktopNavShowChat == v) return;
+    _desktopNavShowChat = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopNavShowChatKey, v);
+  }
+
+  Future<void> setDesktopNavShowSearch(bool v) async {
+    if (_desktopNavShowSearch == v) return;
+    _desktopNavShowSearch = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopNavShowSearchKey, v);
+  }
+
+  Future<void> setDesktopNavShowOcr(bool v) async {
+    if (_desktopNavShowOcr == v) return;
+    _desktopNavShowOcr = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopNavShowOcrKey, v);
+  }
+
+  Future<void> setDesktopNavShowTranslate(bool v) async {
+    if (_desktopNavShowTranslate == v) return;
+    _desktopNavShowTranslate = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopNavShowTranslateKey, v);
+  }
+
+  Future<void> setDesktopNavShowStorage(bool v) async {
+    if (_desktopNavShowStorage == v) return;
+    _desktopNavShowStorage = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopNavShowStorageKey, v);
+  }
+
+  Future<void> setDesktopNavShowTheme(bool v) async {
+    if (_desktopNavShowTheme == v) return;
+    _desktopNavShowTheme = v;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_desktopNavShowThemeKey, v);
+  }
+
   // Display: chat font scale (0.5 - 1.5, default 1.0)
   double _chatFontScale = 1.0;
   double get chatFontScale => _chatFontScale;
@@ -4314,6 +4396,12 @@ DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER. If the user asks a math or logi
     copy._desktopAutoSwitchTopics = _desktopAutoSwitchTopics;
     copy._desktopShowTray = _desktopShowTray;
     copy._desktopMinimizeToTrayOnClose = _desktopMinimizeToTrayOnClose;
+    copy._desktopNavShowChat = _desktopNavShowChat;
+    copy._desktopNavShowSearch = _desktopNavShowSearch;
+    copy._desktopNavShowOcr = _desktopNavShowOcr;
+    copy._desktopNavShowTranslate = _desktopNavShowTranslate;
+    copy._desktopNavShowStorage = _desktopNavShowStorage;
+    copy._desktopNavShowTheme = _desktopNavShowTheme;
     copy._usePureBackground = _usePureBackground;
     copy._chatMessageBackgroundStyle = _chatMessageBackgroundStyle;
     return copy;

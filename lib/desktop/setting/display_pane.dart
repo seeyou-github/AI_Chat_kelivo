@@ -150,6 +150,23 @@ class _DisplaySettingsBody extends StatelessWidget {
                   _ToggleRowFlutterLogging(),
                 ],
               ),
+              const SizedBox(height: 16),
+              const _SettingsCard(
+                title: '侧栏按钮显示设置',
+                children: [
+                  _ToggleRowDesktopNavChat(),
+                  _RowDivider(),
+                  _ToggleRowDesktopNavSearch(),
+                  _RowDivider(),
+                  _ToggleRowDesktopNavOcr(),
+                  _RowDivider(),
+                  _ToggleRowDesktopNavTranslate(),
+                  _RowDivider(),
+                  _ToggleRowDesktopNavStorage(),
+                  _RowDivider(),
+                  _ToggleRowDesktopNavTheme(),
+                ],
+              ),
             ],
           ),
         ),
@@ -2645,6 +2662,84 @@ class _ToggleRowNewChatOnLaunch extends StatelessWidget {
       label: l10n.displaySettingsPageNewChatOnLaunchTitle,
       value: sp.newChatOnLaunch,
       onChanged: (v) => context.read<SettingsProvider>().setNewChatOnLaunch(v),
+    );
+  }
+}
+
+class _ToggleRowDesktopNavChat extends StatelessWidget {
+  const _ToggleRowDesktopNavChat();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: '聊天按钮',
+      value: sp.desktopNavShowChat,
+      onChanged: sp.setDesktopNavShowChat,
+    );
+  }
+}
+
+class _ToggleRowDesktopNavSearch extends StatelessWidget {
+  const _ToggleRowDesktopNavSearch();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: '搜索按钮',
+      value: sp.desktopNavShowSearch,
+      onChanged: sp.setDesktopNavShowSearch,
+    );
+  }
+}
+
+class _ToggleRowDesktopNavOcr extends StatelessWidget {
+  const _ToggleRowDesktopNavOcr();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: 'OCR按钮',
+      value: sp.desktopNavShowOcr,
+      onChanged: sp.setDesktopNavShowOcr,
+    );
+  }
+}
+
+class _ToggleRowDesktopNavTranslate extends StatelessWidget {
+  const _ToggleRowDesktopNavTranslate();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: '翻译按钮',
+      value: sp.desktopNavShowTranslate,
+      onChanged: sp.setDesktopNavShowTranslate,
+    );
+  }
+}
+
+class _ToggleRowDesktopNavStorage extends StatelessWidget {
+  const _ToggleRowDesktopNavStorage();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: '存储按钮',
+      value: sp.desktopNavShowStorage,
+      onChanged: sp.setDesktopNavShowStorage,
+    );
+  }
+}
+
+class _ToggleRowDesktopNavTheme extends StatelessWidget {
+  const _ToggleRowDesktopNavTheme();
+  @override
+  Widget build(BuildContext context) {
+    final sp = context.watch<SettingsProvider>();
+    return _ToggleRow(
+      label: '主题切换按钮',
+      value: sp.desktopNavShowTheme,
+      onChanged: sp.setDesktopNavShowTheme,
     );
   }
 }

@@ -17,15 +17,17 @@ class DesktopNavRail extends StatelessWidget {
     this.globalSearchActive = false,
     required this.onTapChat,
     required this.onTapGlobalSearch,
+    required this.onTapOcr,
     required this.onTapTranslate,
     required this.onTapStorage,
     required this.onTapSettings,
   });
 
-  final int activeIndex; // 0=Chat, 1=Translate, 2=Storage, 3=Settings
+  final int activeIndex; // 0=Chat, 1=Translate, 2=Storage, 3=Settings, 4=OCR
   final bool globalSearchActive;
   final VoidCallback onTapChat;
   final VoidCallback onTapGlobalSearch;
+  final VoidCallback onTapOcr;
   final VoidCallback onTapTranslate;
   final VoidCallback onTapStorage;
   final VoidCallback onTapSettings;
@@ -36,6 +38,7 @@ class DesktopNavRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = AppLocalizations.of(context)!;
+    final sp = context.watch<SettingsProvider>();
     final isMac = Platform.isMacOS;
     final double topGap = isMac ? 36.0 : 8.0;
     final isChatActive = activeIndex == 0 && !globalSearchActive;
@@ -43,6 +46,7 @@ class DesktopNavRail extends StatelessWidget {
     final isTranslateActive = activeIndex == 1;
     final isStorageActive = activeIndex == 2;
     final isSettingsActive = activeIndex == 3;
+    final isOcrActive = activeIndex == 4;
 
     return Container(
       width: width,
@@ -52,44 +56,64 @@ class DesktopNavRail extends StatelessWidget {
           SizedBox(height: topGap),
           _UserAvatarButton(),
           const SizedBox(height: 12),
-          _CircleAction(
-            tooltip: l10n.desktopNavChatTooltip,
-            icon: lucide.Lucide.MessageCircle,
-            onTap: onTapChat,
-            size: 40,
-            iconSize: 18,
-            iconColor: isChatActive ? cs.primary : null,
-          ),
-          const SizedBox(height: 8),
-          _CircleAction(
-            tooltip: l10n.desktopNavGlobalSearchTooltip,
-            icon: lucide.Lucide.Search,
-            onTap: onTapGlobalSearch,
-            size: 40,
-            iconSize: 18,
-            iconColor: isGlobalSearchActive ? cs.primary : null,
-          ),
-          const SizedBox(height: 8),
-          _CircleAction(
-            tooltip: l10n.desktopNavTranslateTooltip,
-            icon: lucide.Lucide.Languages,
-            onTap: onTapTranslate,
-            size: 40,
-            iconSize: 18,
-            iconColor: isTranslateActive ? cs.primary : null,
-          ),
-          const SizedBox(height: 8),
-          _CircleAction(
-            tooltip: l10n.desktopNavStorageTooltip,
-            icon: lucide.Lucide.Folder,
-            onTap: onTapStorage,
-            size: 40,
-            iconSize: 18,
-            iconColor: isStorageActive ? cs.primary : null,
-          ),
+          if (sp.desktopNavShowChat) ...[
+            _CircleAction(
+              tooltip: l10n.desktopNavChatTooltip,
+              icon: lucide.Lucide.MessageCircle,
+              onTap: onTapChat,
+              size: 40,
+              iconSize: 18,
+              iconColor: isChatActive ? cs.primary : null,
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (sp.desktopNavShowSearch) ...[
+            _CircleAction(
+              tooltip: l10n.desktopNavGlobalSearchTooltip,
+              icon: lucide.Lucide.Search,
+              onTap: onTapGlobalSearch,
+              size: 40,
+              iconSize: 18,
+              iconColor: isGlobalSearchActive ? cs.primary : null,
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (sp.desktopNavShowOcr) ...[
+            _CircleAction(
+              tooltip: 'OCR文字识别',
+              icon: lucide.Lucide.TextSelect,
+              onTap: onTapOcr,
+              size: 40,
+              iconSize: 18,
+              iconColor: isOcrActive ? cs.primary : null,
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (sp.desktopNavShowTranslate) ...[
+            _CircleAction(
+              tooltip: l10n.desktopNavTranslateTooltip,
+              icon: lucide.Lucide.Languages,
+              onTap: onTapTranslate,
+              size: 40,
+              iconSize: 18,
+              iconColor: isTranslateActive ? cs.primary : null,
+            ),
+            const SizedBox(height: 8),
+          ],
+          if (sp.desktopNavShowStorage)
+            _CircleAction(
+              tooltip: l10n.desktopNavStorageTooltip,
+              icon: lucide.Lucide.Folder,
+              onTap: onTapStorage,
+              size: 40,
+              iconSize: 18,
+              iconColor: isStorageActive ? cs.primary : null,
+            ),
           const Spacer(),
-          _ThemeCycleButton(),
-          const SizedBox(height: 8),
+          if (sp.desktopNavShowTheme) ...[
+            _ThemeCycleButton(),
+            const SizedBox(height: 8),
+          ],
           _CircleAction(
             tooltip: l10n.desktopNavSettingsTooltip,
             icon: lucide.Lucide.Settings,

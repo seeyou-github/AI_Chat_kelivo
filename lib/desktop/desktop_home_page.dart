@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform;
 import 'desktop_nav_rail.dart';
 import 'desktop_chat_page.dart';
+import 'desktop_ocr_page.dart';
 import 'window_title_bar.dart';
 import 'desktop_settings_page.dart';
 import 'desktop_translate_page.dart';
@@ -22,7 +23,7 @@ class DesktopHomePage extends StatefulWidget {
     this.initialProviderKey,
   });
 
-  final int? initialTabIndex; // 0=Chat,1=Translate,2=Storage,3=Settings
+  final int? initialTabIndex; // 0=Chat,1=Translate,2=Storage,3=Settings,4=OCR
   final String? initialProviderKey;
 
   @override
@@ -30,10 +31,11 @@ class DesktopHomePage extends StatefulWidget {
 }
 
 class _DesktopHomePageState extends State<DesktopHomePage> {
-  int _tabIndex = 0; // 0=Chat, 1=Translate, 2=Storage, 3=Settings
+  int _tabIndex = 0; // 0=Chat, 1=Translate, 2=Storage, 3=Settings, 4=OCR
   bool _translateVisited = false;
   bool _storageVisited = false;
   bool _settingsVisited = false;
+  bool _ocrVisited = false;
   bool _globalSearchActive = false;
   StreamSubscription<HotkeyAction>? _hotkeySub;
   StreamSubscription<ChatAction>? _chatActionSub;
@@ -42,11 +44,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   void initState() {
     super.initState();
     if (widget.initialTabIndex != null) {
-      _tabIndex = widget.initialTabIndex!.clamp(0, 3);
+      _tabIndex = widget.initialTabIndex!.clamp(0, 4);
     }
     _translateVisited = _tabIndex == 1;
     _storageVisited = _tabIndex == 2;
     _settingsVisited = _tabIndex == 3;
+    _ocrVisited = _tabIndex == 4;
     // 初始进入时如果就是聊天页，则聚焦聊天输入框
     if (_tabIndex == 0) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -178,6 +181,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 });
                 ChatActionBus.instance.fire(ChatAction.enterGlobalSearch);
               },
+              onTapOcr: () {
+                setState(() {
+                  _tabIndex = 4;
+                  _ocrVisited = true;
+                  _globalSearchActive = false;
+                });
+                ChatActionBus.instance.fire(ChatAction.exitGlobalSearch);
+              },
               onTapTranslate: () {
                 setState(() {
                   _tabIndex = 1;
@@ -224,6 +235,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ? DesktopSettingsPage(
                           key: const ValueKey('settings_page'),
                           initialProviderKey: widget.initialProviderKey,
+                        )
+                      : const SizedBox.shrink(),
+                  _ocrVisited
+                      ? const DesktopOcrPage(
+                          key: ValueKey('ocr_page'),
                         )
                       : const SizedBox.shrink(),
                 ],
